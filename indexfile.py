@@ -35,7 +35,7 @@ class IndexFile:
 
         """
         return sum(
-            f.size for k, f in self.tagfiles.items() if k is not 'path'
+            f.size for k, f in self.tagfiles.items() if k != 'path'
         ) + self.header_size + self.data_size
 
     @property

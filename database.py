@@ -1,24 +1,8 @@
 
 
-# itertools.product doesn't exist in python 2.5
-try:
-    from itertools import product
-except ImportError:
-    # This code taken from the python 2.6 itertools manual
-    def product(*args, **kwds):
-        # product('ABCD', 'xy') --> Ax Ay Bx By Cx Cy Dx Dy
-        # product(range(2), repeat=3) --> 000 001 010 011 100 101 110 111
-        pools = list(map(tuple, args)) * kwds.get('repeat', 1)
-        result = [[]]
-        for pool in pools:
-            result = [x+[y] for x in result for y in pool]
-        for prod in result:
-            yield tuple(prod)
-
 import os
-import pickle as pickle
-
-from ordereddict import ordereddict
+import pickle
+from itertools import product
 try:
     import tagging
     from tagging import titleformat
@@ -319,7 +303,10 @@ class Database:
 
         for path in sorted(self.paths):
             (size, mtime), tags = self.tag_cache[path]
-            path = os.path.splitdrive(tags['path'][0])[1].replace('\\', '/')
+            # Remove drive letter and convert to Unix-style path for Rockbox
+            # (Rockbox expects forward slashes on all platforms)
+            path = os.path.splitdrive(tags['path'][0])[1]
+            path = path.replace(os.sep, '/')
 
             if callback: callback(path)
 

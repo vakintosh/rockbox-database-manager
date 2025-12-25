@@ -1,6 +1,7 @@
 import wx
+import wx.lib.newevent
 import functools
-import thread
+import _thread
 import time
 import sys
 
@@ -13,34 +14,28 @@ import wxFB_gui
 #-------------------------------------------------------------------------------
 # Thread events
 #-------------------------------------------------------------------------------
-myEVT_THREAD_START = wx.NewEventType()
-EVT_THREAD_START = wx.PyEventBinder(myEVT_THREAD_START, 1)
+# wxPython Phoenix: Use wx.lib.newevent instead of deprecated wx.NewEventType/PyEventBinder
+ThreadStartEvent, EVT_THREAD_START = wx.lib.newevent.NewEvent()
+ThreadCallbackEvent, EVT_THREAD_CALLBACK = wx.lib.newevent.NewEvent()
+ThreadEndEvent, EVT_THREAD_END = wx.lib.newevent.NewEvent()
 
-myEVT_THREAD_CALLBACK = wx.NewEventType()
-EVT_THREAD_CALLBACK = wx.PyEventBinder(myEVT_THREAD_CALLBACK, 1)
-
-myEVT_THREAD_END = wx.NewEventType()
-EVT_THREAD_END = wx.PyEventBinder(myEVT_THREAD_END, 1)
-
-class ThreadEvent(wx.PyCommandEvent):
-    def __init__(self, evtType, message=None, *args, **kwargs):
-        wx.PyCommandEvent.__init__(self, evtType, wx.ID_ANY)
-        self.message = message
-        self.args = args
-        self.__dict__.update(kwargs)
-
+class ThreadEvent:
+    """Helper class for posting thread events."""
+    
     @staticmethod
     def post_start(obj):
-        wx.PostEvent(obj.GetEventHandler(), ThreadEvent(myEVT_THREAD_START))
+        evt = ThreadStartEvent()
+        wx.PostEvent(obj.GetEventHandler(), evt)
 
     @staticmethod
     def post_end(obj):
-        wx.PostEvent(obj.GetEventHandler(), ThreadEvent(myEVT_THREAD_END))
+        evt = ThreadEndEvent()
+        wx.PostEvent(obj.GetEventHandler(), evt)
 
     @staticmethod
     def post_callback(obj, message, *args, **kwargs):
-        wx.PostEvent(obj.GetEventHandler(),
-                     ThreadEvent(myEVT_THREAD_CALLBACK, message, *args, **kwargs))
+        evt = ThreadCallbackEvent(message=message, args=args, **kwargs)
+        wx.PostEvent(obj.GetEventHandler(), evt)
 
 
 #-------------------------------------------------------------------------------
@@ -50,7 +45,7 @@ class InfoPanel(wx.ScrolledWindow):
     def __init__(self, parent):
         wx.ScrolledWindow.__init__(self, parent, wx.ID_ANY, style=wx.BORDER_SUNKEN)
         self.SetScrollRate(10,10)
-        self.sizer = wx.FlexGridSizer(0, 4)
+        self.sizer = wx.FlexGridSizer(0, 4, 0, 0)
         self.sizer.AddGrowableCol(3)
         self.SetSizer(self.sizer)
 
@@ -399,7 +394,7 @@ class MyFrame(wxFB_gui.Frame):
             except SystemExit:
                 pass
 
-        thread.start_new_thread(do_it, (None,))
+        _thread.start_new_thread(do_it, (None,))
 
 
     def OnClose(self, evt):
@@ -444,7 +439,8 @@ class FieldPane(wxFB_gui.FieldPane):
 
 
     def PostEvent(self, selection):
-        wx.PostEvent(self.GetEventHandler(), FieldPaneEvent(selection, self))
+        evt = FieldPaneEvent(selection=selection, pane=self)
+        wx.PostEvent(self.GetEventHandler(), evt)
 
     def SetEntries(self, entries):
         self.entries = entries
@@ -463,26 +459,20 @@ class FieldPane(wxFB_gui.FieldPane):
         self.PostEvent(evt.GetString())
 
 
-myEVT_FIELD_PANE = wx.NewEventType()
-EVT_FIELD_PANE = wx.PyEventBinder(myEVT_FIELD_PANE, 1)
+# wxPython Phoenix: Use wx.lib.newevent
+# The NewEvent() function returns an event class that can be instantiated with keyword arguments
+FieldPaneEvent, EVT_FIELD_PANE = wx.lib.newevent.NewEvent()
 
-class FieldPaneEvent(wx.PyCommandEvent):
-    def __init__(self, selection, pane, evtType = myEVT_FIELD_PANE):
-        wx.PyCommandEvent.__init__(self, evtType, pane.GetId())
-        self.selection = selection
-        self.pane = pane
+# wxPython Phoenix: Use wx.lib.newevent
+_DatabaseEvent, EVT_DATABASE = wx.lib.newevent.NewEvent()
 
-myEVT_DATABASE = wx.NewEventType()
-EVT_DATABASE = wx.PyEventBinder(myEVT_DATABASE, 1)
-
-class DatabaseEvent(wx.PyCommandEvent):
-    def __init__(self, database, evtType = myEVT_DATABASE):
-        wx.PyCommandEvent.__init__(self, evtType, wx.ID_ANY)
-        self.database = database
-
+class DatabaseEvent:
+    """Helper class for posting database events."""
+    
     @staticmethod
     def post_updated(obj, database):
-        wx.PostEvent(obj.GetEventHandler(), DatabaseEvent(database))
+        evt = _DatabaseEvent(database=database)
+        wx.PostEvent(obj.GetEventHandler(), evt)
 
 #-------------------------------------------------------------------------------
 # Field Pane Panel
@@ -587,7 +577,7 @@ class MyApp(wx.App):
         self.frame = MyFrame(None)
         return True
 
-app = MyApp(redirect = True)
+app = MyApp(redirect = False)  # Changed to False to see errors in terminal
 app.MainLoop()
 
 # Kill any remaining threads before we're done.

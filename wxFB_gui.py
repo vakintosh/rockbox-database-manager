@@ -54,7 +54,7 @@ class Frame ( wx.Frame ):
 		bSizer2.Fit( self.mainpanel )
 		self.notebook.AddPage( self.mainpanel, "Manage", True )
 		self.m_panel5 = wx.Panel( self.notebook, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, wx.TAB_TRAVERSAL )
-		fgSizer1 = wx.FlexGridSizer( 2, 3, 0, 0 )
+		fgSizer1 = wx.FlexGridSizer( 0, 3, 0, 0 )
 		fgSizer1.AddGrowableCol( 1 )
 		fgSizer1.AddGrowableCol( 2 )
 		fgSizer1.SetFlexibleDirection( wx.BOTH )
@@ -162,7 +162,7 @@ class Frame ( wx.Frame ):
 		
 		self.SetSizer( bSizer1 )
 		self.Layout()
-		self.status = self.CreateStatusBar( 2, wx.ST_SIZEGRIP, wx.ID_ANY )
+		self.status = self.CreateStatusBar( 2, wx.STB_SIZEGRIP, wx.ID_ANY )
 		
 		# Connect Events
 		self.add_dir_button.Bind( wx.EVT_BUTTON, self.OnAddDirectory )
