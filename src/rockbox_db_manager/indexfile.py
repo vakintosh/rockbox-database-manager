@@ -1,8 +1,8 @@
 import struct
 
-from utils import fat_to_mtime
-from defs import MAGIC, TAGS, FILE_TAGS, EMBEDDED_TAGS
-from tagfile import TagEntry
+from .utils import fat_to_mtime
+from .defs import MAGIC, TAGS, FILE_TAGS, EMBEDDED_TAGS
+from .tagfile import TagEntry
 
 class IndexFile:
     def __init__(self, entries=None, tagfiles=None):

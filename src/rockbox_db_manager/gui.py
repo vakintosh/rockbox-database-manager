@@ -5,10 +5,9 @@ import _thread
 import time
 import sys
 
-from database import Database
-from defs import ENCODING, FORMATTED_TAGS
-
-import wxFB_gui
+from .database import Database
+from .defs import ENCODING, FORMATTED_TAGS
+from . import wxFB_gui
 
 
 #-------------------------------------------------------------------------------
@@ -577,8 +576,14 @@ class MyApp(wx.App):
         self.frame = MyFrame(None)
         return True
 
-app = MyApp(redirect = False)  # Changed to False to see errors in terminal
-app.MainLoop()
 
-# Kill any remaining threads before we're done.
-sys.exit()
+def main():
+    """Main entry point for the Rockbox Database Manager GUI."""
+    app = MyApp(redirect=False)
+    app.MainLoop()
+    # Kill any remaining threads before we're done.
+    sys.exit()
+
+
+if __name__ == "__main__":
+    main()

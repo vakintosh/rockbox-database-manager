@@ -182,7 +182,7 @@ wheels = [
 [[package]]
 name = "rockbox-db-manager"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "mutagen" },
     { name = "wxpython" },

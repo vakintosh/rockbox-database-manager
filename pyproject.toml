@@ -1,16 +1,41 @@
 [project]
 name = "rockbox-db-manager"
 version = "0.1.0"
-description = "Add your description here"
+description = "A Python 3 application for managing Rockbox database files with a wxPython GUI"
 readme = "README.md"
 requires-python = ">=3.11"
+authors = [
+    { name = "Rockbox DB Manager Contributors" }
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Sound/Audio",
+]
 dependencies = [
     "mutagen>=1.47.0",
     "wxpython>=4.2.4",
 ]
+
+[project.scripts]
+rockbox-db-manager = "rockbox_db_manager.gui:main"
+
+[project.gui-scripts]
+rockbox-db-manager-gui = "rockbox_db_manager.gui:main"
+
+[build-system]
+requires = ["uv_build>=0.9.18,<0.10.0"]
+build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
     "pyinstaller>=6.17.0",
     "ruff>=0.14.10",
 ]
+
+[tool.uv]
+package = true

@@ -2,7 +2,7 @@ import math
 import os
 import struct
 
-from defs import MAGIC, ENCODING
+from .defs import MAGIC, ENCODING
 
 class TagFile:
     def __init__(self, entries=None):

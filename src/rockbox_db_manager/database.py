@@ -4,8 +4,8 @@ import os
 import pickle
 from itertools import product
 try:
-    import tagging
-    from tagging import titleformat
+    from . import tagging
+    from .tagging import titleformat
 except ImportError:
     tagging = None
     titleformat = None
@@ -15,10 +15,10 @@ except ImportError:
                       "Please install the mutagen tag library.\n" +\
                       "(Available from http://code.google.com/p/mutagen/)")
 
-from defs import FORMATTED_TAGS, FILE_TAGS, EMBEDDED_TAGS
-from utils import mtime_to_fat
-from tagfile import TagFile, TagEntry
-from indexfile import IndexFile, IndexEntry
+from .defs import FORMATTED_TAGS, FILE_TAGS, EMBEDDED_TAGS
+from .utils import mtime_to_fat
+from .tagfile import TagFile, TagEntry
+from .indexfile import IndexFile, IndexEntry
 
 def myprint(*args, **kwargs):
     """Emulates the print() function.
