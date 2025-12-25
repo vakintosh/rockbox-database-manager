@@ -73,6 +73,11 @@ uv sync
 
 ### macOS
 
+> **Testing Status**: This application has been tested and verified working on:
+> - macOS Sonoma 14.8.3 (23J220) - Intel Mac
+> 
+> Testing on Apple Silicon Macs and other macOS versions is in progress.
+
 wxPython requires a **framework-enabled Python build** on macOS. The standard Python from Homebrew includes framework support.
 
 **Setup Steps:**

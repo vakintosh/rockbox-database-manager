@@ -2,6 +2,15 @@
 
 A Python 3 application for managing Rockbox database files with a wxPython GUI.
 
+## Status
+
+⚠️ **Work in Progress** - This project is currently under active development.
+
+**Testing**: This application has been tested on:
+- macOS Sonoma 14.8.3 (23J220) - Intel Mac
+
+Testing on other platforms (Linux, Windows, Apple Silicon Macs) is in progress.
+
 ## Features
 
 - Generate Rockbox database files from audio file metadata
@@ -57,6 +66,33 @@ uv run rockbox-db-manager
 
 See [PLATFORM_NOTES.md](PLATFORM_NOTES.md) for platform-specific setup instructions, especially for macOS which requires framework-enabled Python for wxPython GUI support.
 
+## Credits & History
+
+This is a modernized Python 3.11+ version of the **Rockbox Database Manager**, originally created by **Mike Richards** (mrichards24@gmx.com) in 2009. The original project provided a GUI tool for manipulating Rockbox databases with custom tag mapping and sorting capabilities.
+
+### Original Project
+
+The original Rockbox Database Manager (version dated 12/10/09) was written for Python 2.5/2.6 and included:
+- User-defined database tag mapping using foobar2000 titleformat syntax
+- Multiple value tag support
+- wxPython GUI for database management
+- Full documentation available in [README.txt](README.txt) and [README_src.txt](README_src.txt)
+
+### This Version (2024-2025)
+
+This repository represents a complete migration and modernization effort:
+- **Python 3.11+** compatibility (from Python 2.5/2.6)
+- **wxPython Phoenix** (4.x) migration (from wxPython Classic)
+- **UV project structure** with proper packaging
+- **Framework-enabled Python** support for macOS
+- Updated dependencies (mutagen 1.47+, wxPython 4.2.4+)
+- Cross-platform path handling improvements
+
+### Third-Party Components
+
+The `rbdb.py` module is Copyright 2008, **Aren Olson** (reacocard@gmail.com), distributed under a BSD-style license (see file for full license text).
+
 ## License
 
-GPL v2 or later
+- Main project: GPL v2 or later
+- `rbdb.py`: BSD-style license (see file header for details)
