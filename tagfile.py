@@ -134,7 +134,8 @@ class TagEntry:
         if self.is_path:
             return len(self.__data) + 1
         else:
-            return int(math.ceil( (len(self.__data) + 1) / 8.) * 8)
+            data_len = len(self.__data) + 1
+            return ((data_len + 7) // 8) * 8
 
     @property
     def size(self):

@@ -127,7 +127,7 @@ def get_tracknumber(tags):
 Field.RegisterField('tracknumber', get_tracknumber)
 
 def get_bitrate(tags):
-    return [str( int(tags.get_string('bitrate')[0]) / 1000 )]
+    return [str( int(tags.get_string('bitrate')[0]) // 1000 )]
 Field.RegisterField('bitrate', get_bitrate)
 
 def _get_length(tags):

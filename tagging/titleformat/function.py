@@ -284,9 +284,9 @@ def sub(*args):
 def mul(*args):
     return reduce(operator.mul, args)
 def div(*args):
-    return reduce(operator.div, (a for a in args if a != 0))
+    return reduce(operator.floordiv, (a for a in args if a != 0))
 def mod(*args):
-    return reduce(operator.div, (a for a in args if a != 0))
+    return reduce(operator.mod, (a for a in args if a != 0))
 def muldiv(a,b,c):
     return int(round(float(a) * b / c))
 def min_(*args):
