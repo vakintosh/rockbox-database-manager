@@ -16,7 +16,7 @@ class Frame ( wx.Frame ):
 	def __init__( self, parent ):
 		wx.Frame.__init__  ( self, parent, id = wx.ID_ANY, title = "Rockbox Database Builder", pos = wx.DefaultPosition, size = wx.Size( 748,410 ), style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL )
 		
-		self.SetSizeHintsSz( wx.DefaultSize, wx.DefaultSize )
+		self.SetSizeHints( wx.DefaultSize, wx.DefaultSize )
 		
 		bSizer1 = wx.BoxSizer( wx.VERTICAL )
 		
@@ -173,13 +173,9 @@ class Frame ( wx.Frame ):
 		self.m_button61.Bind( wx.EVT_BUTTON, self.OnLoadTags )
 	
 	def __del__( self ):
-		# Disconnect Events
-		self.add_dir_button.Unbind( wx.EVT_BUTTON, handler = self.OnAddDirectory )
-		self.m_button3.Unbind( wx.EVT_BUTTON, handler = self.OnGenerateDatabase )
-		self.m_button4.Unbind( wx.EVT_BUTTON, handler = self.OnWriteDatabase )
-		self.m_button5.Unbind( wx.EVT_BUTTON, handler = self.OnReadDatabase )
-		self.m_button6.Unbind( wx.EVT_BUTTON, handler = self.OnSaveTags )
-		self.m_button61.Unbind( wx.EVT_BUTTON, handler = self.OnLoadTags )
+		pass
+		# Disconnect Events - not needed in wxPython Phoenix, causes errors
+		# Events are automatically disconnected when widgets are destroyed
 	
 	
 	# Virtual event handlers, overide them in your derived class
@@ -230,9 +226,9 @@ class FieldPane ( wx.Panel ):
 		self.listbox.Bind( wx.EVT_LISTBOX, self.OnListSelect )
 	
 	def __del__( self ):
-		# Disconnect Events
-		self.choice.Unbind( wx.EVT_CHOICE, handler = self.OnFieldChange )
-		self.listbox.Unbind( wx.EVT_LISTBOX, handler = self.OnListSelect )
+		pass
+		# Disconnect Events - not needed in wxPython Phoenix, causes errors
+		# Events are automatically disconnected when widgets are destroyed
 	
 	
 	# Virtual event handlers, overide them in your derived class
