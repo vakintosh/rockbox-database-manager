@@ -329,8 +329,11 @@ class Database:
 
             for field in EMBEDDED_TAGS:
                 try:
-                    entry[field] = int(formats[field].format(tags))
-                except KeyError:
+                    formatted_value = str(formats[field].format(tags))
+                    entry[field] = int(formatted_value)
+                except (KeyError, ValueError):
+                    # KeyError: field not found in formats
+                    # ValueError: cannot convert formatted string to int
                     pass
 
             multiple_tags = {}
