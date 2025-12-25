@@ -1,5 +1,5 @@
-import utils
-from tagbool import TagFalse
+from . import utils
+from .tagbool import TagFalse
 
 def parse(format, end_chars = None):
     """Parse a titleformat statement.
@@ -11,7 +11,7 @@ def parse(format, end_chars = None):
 
     """
 
-    import string, field, function, conditional
+    from . import string, field, function, conditional
     char_map = {
         "'": string.parse,
         "[": conditional.parse,
@@ -64,17 +64,17 @@ class Statement(list):
         this task.
 
         """
-        ret = TagFalse(u'')
+        ret = TagFalse('')
         for part in self:
             if False:
-                print
-                print 'Formatting'
-                print '-----------'
-                print part.to_string()
+                print()
+                print('Formatting')
+                print('-----------')
+                print(part.to_string())
             value = part.format(tags)
             if False:
-                print 'Result: ',repr(value)
-                print
+                print('Result: ',repr(value))
+                print()
             if isinstance(value, list):
                 for v in value:
                     assert v.__class__.__name__ == 'TagTrue' or v.__class__.__name__ == 'TagFalse'
@@ -89,15 +89,15 @@ class Statement(list):
 
 
     def __pprint_helper(self, tabs = 0):
-        from Function import Function
+        from .Function import Function
         tab_char = '    '
         lines = []
-        lines.append(tab_char * tabs + '%s([' % self.__class__.__name__)
+        lines.append(tab_char * tabs + f'{self.__class__.__name__}([')
         for part in self:
             if isinstance(part, Statement):
                 lines.extend(Statement.__pprint_helper(part, tabs+1))
             elif isinstance(part, Function):
-                lines.append(tab_char * (tabs+1) + 'Function(%s, [' % repr(part.name))
+                lines.append(tab_char * (tabs+1) + f'Function({repr(part.name)}, [')
                 for arg in part.args:
                     lines.extend(Statement.__pprint_helper(arg, tabs+2))
                     lines[-1] += ','
@@ -109,10 +109,10 @@ class Statement(list):
         return lines
 
     def pprint(self):
-        print '\n'.join(self.__pprint_helper())
+        print('\n'.join(self.__pprint_helper()))
 
     def __repr__(self):
-        return 'Statement(%s)' % ', '.join(repr(part) for part in self)
+        return 'Statement({})'.format(', '.join(repr(part) for part in self))
 
     def to_string(self):
         return ''.join(part.to_string() for part in self)

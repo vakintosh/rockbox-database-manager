@@ -65,23 +65,24 @@ FLAGS = {
         8: "TRKNUMGEN",
         16: "RESURRECTED"
         }
-SGALF = dict([ (v,k) for k,v in FLAGS.iteritems() ])
+SGALF = dict([ (v,k) for k,v in FLAGS.items() ])
 
 def to_int(s):
     total = 0
     for c in s[::-1]: 
         total = total*256
-        total += ord(c)
+        # In Python 3, iterating over bytes yields integers directly
+        total += c if isinstance(c, int) else ord(c)
     return total
 
 def to_str(i, n=0):
-    s = ""
+    s = b""
     while i > 0:
-        s += chr(i & 0xff)
+        s += bytes([i & 0xff])
         i = i >> 8
     if n:
         if len(s) < n:
-            s = s + (n - len(s))*chr(0) 
+            s = s + (n - len(s))*b'\x00' 
     return s
 
 def mtime_to_unix(mtime):
@@ -93,7 +94,7 @@ def mtime_to_unix(mtime):
     hour = (tim >> 11) & 0x1F
     minute = (tim >> 5) & 0x3F
     second = tim & 0x1F
-    print (year, month, day, hour, minute, second)
+    print((year, month, day, hour, minute, second))
     t = time.mktime((year, month, day, hour, minute, second, -1, -1, -1))
     return t
 
@@ -126,20 +127,20 @@ class Database(list):
     def parse(self):
         del self[:] # clear any existing data
 
-        files = [ open(os.path.join(self.dir, "database_%s.tcd"%x), "rb+") \
+        files = [ open(os.path.join(self.dir, f"database_{x}.tcd"), "rb+") \
                 for x in [0,1,2,3,4,5,6,7,8,"idx"] ]
         mmaps = [ mmap.mmap(f.fileno(), 0) for f in files ]
         idx = mmaps[9]
 
         self.magic = to_int(idx[0:4]) 
         if self.magic != MAGIC:
-            raise ValueError, "Incompatible DB version"
+            raise ValueError("Incompatible DB version")
         entry_count = to_int(idx[8:12])
         self.serial = to_int(idx[12:16])
         self.commitid = to_int(idx[16:20])
         self.dirty = to_int(idx[20:24])
         if self.dirty != 0:
-            print "WARNING: DB may be corrupt"
+            print("WARNING: DB may be corrupt")
  
         for n in range(entry_count):
             e = Entry()
@@ -163,7 +164,9 @@ class Database(list):
                 tname = TAGS[n]
                 offset = e[n]
                 l = to_int(mmaps[n][offset:offset+4])
-                e[tname] = mmaps[n][offset+8:offset+8+l].split(chr(0))[0]
+                raw_string = mmaps[n][offset+8:offset+8+l]
+                # Split by null byte and decode from bytes to string
+                e[tname] = raw_string.split(b'\x00')[0].decode('utf-8', errors='replace')
                 del e[n]
 
     # WARNING: if this gets interrupted the DB will be left in an unusuable state
@@ -174,7 +177,7 @@ class Database(list):
                 item = item[4:]
             return item
 
-        files = [ open(os.path.join(self.dir, "database_%s.tcd"%x), "wb+") \
+        files = [ open(os.path.join(self.dir, f"database_{x}.tcd"), "wb+") \
                 for x in [0,1,2,3,4,5,6,7,8,"idx"] ]
  
         # tag files
@@ -196,11 +199,12 @@ class Database(list):
                 tags.sort(key=lambda x: skey(x[0]))
                 length = 0
                 for tag, e in tags:
-                    tag += chr(0) # strings must be null-terminated
+                    tag = tag.encode('utf-8') if isinstance(tag, str) else tag
+                    tag += b'\x00' # strings must be null-terminated
                     if tn != 4:
                         # pad the string
                         if (len(tag)-4) % 8:
-                            tag += "X" * (8 - ((len(tag)-4) % 8))
+                            tag += b"X" * (8 - ((len(tag)-4) % 8))
                     l = len(tag)
                     id = self.index(e)
                     f.write(to_str(l,2))
@@ -218,16 +222,17 @@ class Database(list):
                         tags[e[tname]].append(e)
                     else:
                         tags[e[tname]] = [e]
-                tagkeys = tags.keys()
+                tagkeys = list(tags.keys())
                 tagkeys.sort(key=skey)
 
                 length = 0
                 for tag in tagkeys:
                     rawtag = tag
-                    tag += chr(0) # strings must be null-terminated
+                    tag = tag.encode('utf-8') if isinstance(tag, str) else tag
+                    tag += b'\x00' # strings must be null-terminated
                     # pad the string
                     if (len(tag)-4) % 8:
-                        tag += "X" * (8 - ((len(tag)-4) % 8))
+                        tag += b"X" * (8 - ((len(tag)-4) % 8))
                     l = len(tag)
                     id = 65535
                     f.write(to_str(l,2))
@@ -254,7 +259,7 @@ class Database(list):
         
         ids = mapping + TAGS[len(mapping):]
         for e in self:
-            s = "".join([ to_str(e[x], 4) for x in ids ])
+            s = b"".join([ to_str(e[x], 4) for x in ids ])
             raw_flags = e.get_raw_flags()
             s += to_str(raw_flags, 4)
             f.write(s)
@@ -312,4 +317,4 @@ if __name__ == '__main__':
     # Print all filenames for tracks that have been played partially
     for e in db:
         if e['playcount'] > 0 and e['lastoffset'] != 0 and not FLAGS[1] in e.flags:
-            print e['filename']
+            print(e['filename'])

@@ -1,5 +1,4 @@
-from __future__ import with_statement
-from itertools import izip
+
 
 # itertools.product doesn't exist in python 2.5
 try:
@@ -9,7 +8,7 @@ except ImportError:
     def product(*args, **kwds):
         # product('ABCD', 'xy') --> Ax Ay Bx By Cx Cy Dx Dy
         # product(range(2), repeat=3) --> 000 001 010 011 100 101 110 111
-        pools = map(tuple, args) * kwds.get('repeat', 1)
+        pools = list(map(tuple, args)) * kwds.get('repeat', 1)
         result = [[]]
         for pool in pools:
             result = [x+[y] for x in result for y in pool]
@@ -17,7 +16,7 @@ except ImportError:
             yield tuple(prod)
 
 import os
-import cPickle as pickle
+import pickle as pickle
 
 from ordereddict import ordereddict
 try:
@@ -61,12 +60,10 @@ def myprint(*args, **kwargs):
         end = kwargs['end']
     except KeyError:
         end = '\n'
-    if end is not '\n':
-        print sep.join(converted_args) + end,
-    else:
-        print sep.join(converted_args)
+    import sys
+    sys.stdout.write(sep.join(converted_args) + end)
 
-class Database(object):
+class Database:
 
     #---------------------------------------------------------------------------
     # Tag cache
@@ -92,7 +89,7 @@ class Database(object):
                 nItems = pickle.load(f)
                 assert isinstance(nItems, int)
                 callback(nItems)
-                for i in xrange(nItems):
+                for i in range(nItems):
                     try:
                         path, ((size, mtime), tags) = pickle.load(f)
                     except EOFError:
@@ -100,7 +97,7 @@ class Database(object):
                     else:
                         callback(path)
                         self.__add_file(path, size, mtime, tags)
-        except IOError:
+        except OSError:
             pass
 
     def save_tags(self, path, callback=None):
@@ -203,7 +200,7 @@ class Database(object):
             warn_no_tags()
             return
 
-        path = unicode(file)
+        path = str(file)
         if callback: callback(path)
         self.__add_file(file)
 
@@ -214,7 +211,7 @@ class Database(object):
             return
 
         for file in files:
-            file = unicode(file)
+            file = str(file)
             if callback: callback(file)
             self.__add_file(file)
 
@@ -241,7 +238,7 @@ class Database(object):
             # between 0 and 1; lower value = greater smoothing
             smoothingFactor = 0.03
 
-        original_root = unicode(path)
+        original_root = str(path)
         for root, dirs, files in os.walk(original_root):
             dircallback(root)
 
@@ -302,15 +299,15 @@ class Database(object):
         # Make the format strings
         formats = {}
         self.multiple_fields = {}
-        for field, (format, sort) in self.formats.iteritems():
+        for field, (format, sort) in self.formats.items():
             if format.is_multiple:
                 self.multiple_fields[field] = TagEntry('<BLANK>')
             format = titleformat.compile(
-                "$if2(%s,'<Untagged>')" % format.to_string()
+                f"$if2({format.to_string()},'<Untagged>')"
             )
             if sort is not None:
                 sort = titleformat.compile(
-                    "$if2(%s,%s)" %(sort.to_string(), format.to_string())
+                    f"$if2({sort.to_string()},{format.to_string()})"
                 )
             formats[field] = (format, sort)
 
@@ -350,7 +347,7 @@ class Database(object):
                     pass
 
             multiple_tags = {}
-            for field, blank_tag in self.multiple_fields.iteritems():
+            for field, blank_tag in self.multiple_fields.items():
                 multiple_tags[field] = [blank_tag]
 
             for field in FILE_TAGS:
@@ -384,12 +381,12 @@ class Database(object):
                     if not isinstance(data, (tuple, list)):
                         data = [data]
 
-                    for v, s in izip(data, sort):
+                    for v, s in zip(data, sort):
                         multiple_tags[field].append(TagEntry(v,s))
 
             # Make all combinations of the IndexEntry
             combinations = []
-            for field, tagentries in multiple_tags.iteritems():
+            for field, tagentries in multiple_tags.items():
                 combinations.append( [ (field, tagentry) for tagentry in tagentries ] )
 
             for fields in product(*combinations):
@@ -410,7 +407,7 @@ class Database(object):
     #---------------------------------------------------------------------------
     # Database read / write
     #---------------------------------------------------------------------------
-    def write(self, out_dir=u'', callback=myprint):
+    def write(self, out_dir='', callback=myprint):
         """Write the database to a directory.
 
         Files that will be written:
@@ -428,19 +425,19 @@ class Database(object):
         """
         # Write the tag files
         for i, field in enumerate(FILE_TAGS):
-            filename = os.path.join(out_dir, 'database_%d.tcd' % i)
-            callback('Writing %s . . .' % filename, end='')
+            filename = os.path.join(out_dir, f'database_{i}.tcd')
+            callback(f'Writing {filename} . . .', end='')
             self[field].write(filename)
             callback('done')
 
         # Write the index file
         filename = os.path.join(out_dir, 'database_idx.tcd')
-        callback('Writing %s . . .' % filename, end='')
+        callback(f'Writing {filename} . . .', end='')
         self.index.write(filename)
         callback('done')
 
     @staticmethod
-    def read(in_dir=u'', callback=myprint):
+    def read(in_dir='', callback=myprint):
         """Read the database from a directory and return a Database object.
 
         Files that will be read:
@@ -459,14 +456,14 @@ class Database(object):
         db = Database()
         # Read the tag files
         for i, field in enumerate(FILE_TAGS):
-            filename = os.path.join(in_dir, 'database_%d.tcd' % i)
-            callback('Reading %s . . .' % filename, end='')
+            filename = os.path.join(in_dir, f'database_{i}.tcd')
+            callback(f'Reading {filename} . . .', end='')
             db.tagfiles[field] = TagFile.read(filename)
             callback('done')
 
         # Read the index file
         filename = os.path.join(in_dir, 'database_idx.tcd')
-        callback('Reading %s . . .' % filename, end='')
+        callback(f'Reading {filename} . . .', end='')
         db.index = IndexFile.read(filename, db.tagfiles)
         callback('done')
 

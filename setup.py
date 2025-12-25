@@ -43,7 +43,7 @@ manifest_template = """
 </assembly>
 """
 
-class Target(object):
+class Target:
     """ A simple class that holds information on our executable file. """
     def __init__(self, **kw):
         """ Default class constructor. Update as you need. """

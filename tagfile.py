@@ -1,11 +1,10 @@
-from __future__ import with_statement
 import math
 import os
 import struct
 
 from defs import MAGIC, ENCODING
 
-class TagFile(object):
+class TagFile:
     def __init__(self, entries=None):
         self.magic = MAGIC
         self.entrydict = {}
@@ -55,7 +54,7 @@ class TagFile(object):
         """Return a TagFile given a file object."""
         tf = TagFile()
         magic, size, entry_count = struct.unpack('III', f.read(4 * 3))
-        for i in xrange(entry_count):
+        for i in range(entry_count):
             offset = f.tell()
             entry = TagEntry.from_file(f, is_path)
             tf.offsets[offset] = entry
@@ -77,7 +76,7 @@ class TagFile(object):
             return TagFile.from_file(f, is_path)
 
 
-class TagEntry(object):
+class TagEntry:
     def __init__(self, data='<Untagged>', sort=None, is_path=False):
         self.data = data
         self.sort = sort
@@ -90,7 +89,7 @@ class TagEntry(object):
         self.index_entries.append(entry)
 
     def __get_data(self):
-        return unicode(self.__data, ENCODING)
+        return str(self.__data, ENCODING)
     def __set_data(self, data):
         self.__data = data.encode(ENCODING)
     data = property(__get_data, __set_data)
@@ -100,9 +99,9 @@ class TagEntry(object):
         return self.data
 
     def __get_raw_data(self):
-        return (self.__data + '\x00').ljust(self.length, 'X')
+        return (self.__data + b'\x00').ljust(self.length, b'X')
     def __set_raw_data(self, raw_data):
-        self.__data = raw_data.partition('\x00')[0]
+        self.__data = raw_data.partition(b'\x00')[0]
     raw_data = property(__get_raw_data, __set_raw_data)
 
     def __get_index(self):
@@ -145,7 +144,7 @@ class TagEntry(object):
         return self.data
 
     def __repr__(self):
-        return 'TagEntry(%r)' % self.data
+        return f'TagEntry({self.data!r})'
 
     def to_file(self, f):
         self.offset = f.tell()

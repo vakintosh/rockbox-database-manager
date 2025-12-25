@@ -1,0 +1,16 @@
+[project]
+name = "rockbox-db-manager"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "mutagen>=1.47.0",
+    "wxpython>=4.2.4",
+]
+
+[dependency-groups]
+dev = [
+    "pyinstaller>=6.17.0",
+    "ruff>=0.14.10",
+]

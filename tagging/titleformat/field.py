@@ -1,6 +1,6 @@
 import os
 
-from tagbool import TagTrue, TagFalse
+from .tagbool import TagTrue, TagFalse
 
 def parse(string):
     """Parse a titleformat field.
@@ -21,7 +21,7 @@ def parse(string):
     return Field(string), len(string) + 2 # two %
 
 
-class Field(object):
+class Field:
 
     """A titleformat object that references a tag field."""
 
@@ -49,18 +49,18 @@ class Field(object):
     def format(self, tags):
         try:
             if self.multiple:
-                return map(TagTrue, self.function(tags))
+                return list(map(TagTrue, self.function(tags)))
             else:
-                return TagTrue(u', '.join(self.function(tags)))
+                return TagTrue(', '.join(self.function(tags)))
         except KeyError:
-            return TagFalse(u'?')
+            return TagFalse('?')
 
 
     def __repr__(self):
         if self.multiple:
-            return 'Field(%s, multiple=True)' % repr(self.name)
+            return f'Field({repr(self.name)}, multiple=True)'
         else:
-            return 'Field(%s)' % repr(self.name)
+            return f'Field({repr(self.name)})'
 
     def to_string(self):
         if self.multiple:
@@ -78,7 +78,7 @@ class Field(object):
     def RegisterSimpleField(cls, name):
         def getter(tags):
             return tags.get_string(name)
-        getter.__name__ = 'get_%s' % name
+        getter.__name__ = f'get_{name}'
         cls.RegisterField(name, getter)
 
     @classmethod
@@ -90,7 +90,7 @@ class Field(object):
                 except KeyError:
                     pass
             raise KeyError(name)
-        getter.__name__ = 'get_mapped_%s' % name
+        getter.__name__ = f'get_mapped_{name}'
         cls.RegisterField(name, getter)
 
 #---------------------------------------------------------------------------
@@ -119,7 +119,7 @@ for name in (
 for name, fields in {
         'artist':       ['artist', 'album artist', 'composer', 'performer'],
         'album artist': ['album artist', 'artist', 'composer', 'performer'],
-    }.iteritems():
+    }.items():
     Field.RegisterMappedField(name, fields)
 
 def get_tracknumber(tags):
@@ -139,7 +139,7 @@ def get_length_seconds(tags):
 def get_length(tags):
     seconds = _get_length(tags)
     minutes, seconds      = divmod(seconds, 60)
-    return [u'%d:%02d' % (minutes, seconds)]
+    return [f'{int(minutes)}:{int(seconds):02d}']
 def get_length_ex(tags):
     seconds = _get_length(tags)
     minutes, seconds = divmod(seconds, 60)
@@ -147,7 +147,7 @@ def get_length_ex(tags):
     ret = ''
     if hours:
         ret += str(int(hours)) + ':'
-    return [ret + u'%02d:%06.3f' % (minutes, seconds)]
+    return [f'{ret}{int(minutes):02d}:{seconds:06.3f}']
 
 Field.RegisterField('length',            get_length)
 Field.RegisterField('length_seconds',    get_length_seconds)

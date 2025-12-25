@@ -1,4 +1,4 @@
-from tagbool import TagFalse
+from .tagbool import TagFalse
 
 def parse(string):
     """Parse a literal titleformat string.
@@ -21,9 +21,9 @@ def parse(string):
             else:
                 return String(ret), len(ret) + extra_chars
         ret += c
-    raise ValueError, 'Unending string'
+    raise ValueError('Unending string')
 
-class String(object):
+class String:
     def __init__(self, string):
         self.string = string
 
@@ -35,7 +35,7 @@ class String(object):
         return TagFalse(self.string)
 
     def __repr__(self):
-        return 'String(%s)' % repr(self.string)
+        return f'String({repr(self.string)})'
 
     def to_string(self):
-        return "'%s'" % self.string.replace("'", "\\'")
+        return "'{}'".format(self.string.replace("'", "\\'"))

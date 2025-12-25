@@ -1,11 +1,10 @@
-from __future__ import with_statement
 import struct
 
 from utils import fat_to_mtime
 from defs import MAGIC, TAGS, FILE_TAGS, EMBEDDED_TAGS
 from tagfile import TagEntry
 
-class IndexFile(object):
+class IndexFile:
     def __init__(self, entries=None, tagfiles=None):
         self.magic = MAGIC
         self.serial = 0
@@ -36,7 +35,7 @@ class IndexFile(object):
 
         """
         return sum(
-            f.size for k, f in self.tagfiles.iteritems() if k is not 'path'
+            f.size for k, f in self.tagfiles.items() if k is not 'path'
         ) + self.header_size + self.data_size
 
     @property
@@ -52,7 +51,7 @@ class IndexFile(object):
         self.commitid += 1
         self.dirty = 0
         f.write(struct.pack('IIIIII', self.magic, self.size, self.count,
-                                      self.serial, self.commitid, self.dirty) )
+                                      self.serial, self.commitid, self.dirty))
         for entry in self.entries:
             entry.to_file(f)
 
@@ -66,7 +65,7 @@ class IndexFile(object):
         index = IndexFile(tagfiles = tagfiles)
         index.magic, size, count, index.serial, index.commitid, index.dirty = \
             struct.unpack('IIIIII', f.read(4 * 6))
-        for i in xrange(count):
+        for i in range(count):
             index.append(IndexEntry.from_file(f, tagfiles))
         assert size == index.size
         return index
