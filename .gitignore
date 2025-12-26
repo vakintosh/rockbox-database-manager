@@ -9,6 +9,8 @@ wheels/
 .pytest_cache
 .mypy_cache
 htmlcov
+.rockbox
 
 # Virtual environments
 .venv
+
