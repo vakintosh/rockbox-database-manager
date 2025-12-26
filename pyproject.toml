@@ -24,6 +24,7 @@ dependencies = [
 ]
 
 [project.scripts]
+rdbm = "rockbox_db_manager.cli:main"
 rockbox-db-manager = "rockbox_db_manager.gui:main"
 
 [project.gui-scripts]

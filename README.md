@@ -40,14 +40,89 @@ pip install -e .
 
 ## Usage
 
-Run the GUI application:
+### GUI Application
+
+Run the graphical user interface:
 
 ```bash
 # Using uv
-uv run rockbox-db-manager
+uv run rockbox-db-manager-gui
 
 # Or directly after installation
 rockbox-db-manager-gui
+```
+
+### Command-Line Interface (`rdbm`)
+
+The CLI provides silent mode operation without launching the GUI, perfect for automation and scripting.
+
+#### Generate Database
+
+```bash
+# Generate database from music folder
+rdbm generate /path/to/music
+
+# Specify custom output location
+rdbm generate /path/to/music -o /Volumes/IPOD/.rockbox
+
+# Use configuration file
+rdbm generate /path/to/music -c ~/.rockbox_config.toml
+
+# Use tag cache for faster regeneration
+rdbm generate /path/to/music --load-tags tags.cache --save-tags tags.cache
+```
+
+#### Load and Inspect Database
+
+```bash
+# Load existing database and show information
+rdbm load /Volumes/IPOD/.rockbox
+
+# With debug logging to see all entries
+rdbm load /Volumes/IPOD/.rockbox --log-level debug
+```
+
+#### Copy Database
+
+```bash
+# Copy database to new location
+rdbm write /Volumes/IPOD/.rockbox /backup/.rockbox
+```
+
+#### CLI Options
+
+- `--version, -v`: Show version and exit
+- `--log-level, -l`: Set logging level (debug, info, warning, error)
+- `--help, -h`: Show help information
+
+**Generate command options:**
+- `music_path`: Path to music folder (required)
+- `-o, --output`: Output directory (default: music_path/.rockbox)
+- `-c, --config`: Configuration file path
+- `--load-tags`: Load tag cache file
+- `--save-tags`: Save tag cache file
+
+**Examples:**
+
+```bash
+# Generate with verbose logging
+rdbm generate /path/to/music --log-level debug
+
+# Generate and save tags for next time
+rdbm generate /path/to/music --save-tags ~/.rockbox_tags.cache
+
+# Quick regeneration using cached tags
+rdbm generate /path/to/music --load-tags ~/.rockbox_tags.cache
+
+# Silent mode (errors only)
+rdbm generate /path/to/music --log-level error
+
+# Show version
+rdbm --version
+
+# Show help
+rdbm --help
+rdbm generate --help
 ```
 
 ## Development
