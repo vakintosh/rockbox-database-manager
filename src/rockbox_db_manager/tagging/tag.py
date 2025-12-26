@@ -9,11 +9,16 @@ from mutagen.easyid3 import EasyID3FileType as ID3, EasyID3
 from mutagen.mp3 import EasyMP3 as MP3
 from mutagen.oggvorbis import OggVorbis as Vorbis
 from mutagen.oggopus import OggOpus as Opus
+from mutagen.oggflac import OggFLAC
+from mutagen.oggspeex import OggSpeex as Speex
+from mutagen.trueaudio import TrueAudio
+from mutagen.aiff import AIFF
+from mutagen.wave import WAVE
 from mutagen.wavpack import WavPack
 from mutagen.mp4 import MP4
 from mutagen.musepack import Musepack
 
-formats = [ ASF, APE, FLAC, ID3, MP3, Vorbis, Opus, WavPack, MP4, Musepack ]
+formats = [ ASF, APE, FLAC, ID3, MP3, Vorbis, Opus, OggFLAC, Speex, TrueAudio, AIFF, WAVE, WavPack, MP4, Musepack ]
 
 def read(filename, force_string = False):
     tags = mutagen.File(filename, options = formats)
