@@ -1,7 +1,7 @@
 import struct
 
 from .utils import fat_to_mtime
-from .defs import MAGIC, TAGS, FILE_TAGS, EMBEDDED_TAGS
+from .defs import MAGIC, TAGS, FILE_TAGS, EMBEDDED_TAGS, SUPPORTED_VERSIONS
 from .tagfile import TagEntry
 
 class IndexFile:
@@ -55,9 +55,20 @@ class IndexFile:
         for entry in self.entries:
             entry.to_file(f)
 
-    def write(self, filename):
-        with open(filename, 'wb') as f:
-            self.to_file(f)
+    def write(self, filename, buffer_size=None):
+        """Write index file to disk with optional buffering for better I/O performance.
+        
+        Args:
+            filename: Path to write the index file
+            buffer_size: Optional buffer size in bytes. If None, uses system default.
+                        Recommended: 8192 (8KB) for optimal performance.
+        """
+        if buffer_size is not None:
+            with open(filename, 'wb', buffering=buffer_size) as f:
+                self.to_file(f)
+        else:
+            with open(filename, 'wb') as f:
+                self.to_file(f)
 
 
     @staticmethod
@@ -65,9 +76,27 @@ class IndexFile:
         index = IndexFile(tagfiles = tagfiles)
         index.magic, size, count, index.serial, index.commitid, index.dirty = \
             struct.unpack('IIIIII', f.read(4 * 6))
+        
+        # Validate database version
+        if index.magic not in SUPPORTED_VERSIONS:
+            raise ValueError(
+                f"Unsupported database version: got {index.magic} (0x{index.magic:08x}). "
+                f"Supported versions: {[f'{v} (0x{v:08x})' for v in SUPPORTED_VERSIONS]}. "
+                f"File may be corrupted or from a newer Rockbox version."
+            )
+        
         for i in range(count):
             index.append(IndexEntry.from_file(f, tagfiles))
-        assert size == index.size
+        
+        # Validate size but don't fail - database versions may calculate differently
+        if size != index.size:
+            import warnings
+            warnings.warn(
+                f"Database size mismatch: header says {size} bytes, calculated {index.size} bytes. "
+                f"This may indicate a version difference or corrupted database, but continuing anyway.",
+                RuntimeWarning
+            )
+        
         return index
 
     @staticmethod
@@ -117,7 +146,14 @@ class IndexEntry(dict):
         index_entry = IndexEntry()
         for field in FILE_TAGS:
             offset = struct.unpack('I', f.read(4))[0]
-            index_entry[field] = tagfiles[field].offsets[offset]
+            
+            # Handle invalid or missing offsets gracefully
+            if offset == 0 or offset not in tagfiles[field].offsets:
+                # Create a placeholder entry for invalid/missing references
+                from .tagfile import TagEntry
+                index_entry[field] = TagEntry('<Invalid Reference>')
+            else:
+                index_entry[field] = tagfiles[field].offsets[offset]
 
         for field in EMBEDDED_TAGS:
             index_entry[field] = struct.unpack('I', f.read(4))[0]

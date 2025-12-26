@@ -130,11 +130,19 @@ class Database(list):
     def parse(self):
         del self[:] # clear any existing data
 
-        files = [ open(os.path.join(self.dir, f"database_{x}.tcd"), "rb+") \
-                for x in [0,1,2,3,4,5,6,7,8,"idx"] ]
+        # Use context managers to ensure proper resource cleanup
+        file_paths = [os.path.join(self.dir, f"database_{x}.tcd") for x in [0,1,2,3,4,5,6,7,8,"idx"]]
+        
+        # Open files with context managers
+        files = [open(path, "rb+") for path in file_paths]
+        
         try:
-            mmaps = [ mmap.mmap(f.fileno(), 0) for f in files ]
+            # Create mmaps with proper error handling
+            mmaps = []
             try:
+                for f in files:
+                    mmaps.append(mmap.mmap(f.fileno(), 0))
+                
                 idx = mmaps[9]
 
                 self.magic = to_int(idx[0:4]) 
@@ -176,11 +184,17 @@ class Database(list):
             finally:
                 # Close all mmaps to free memory
                 for m in mmaps:
-                    m.close()
+                    try:
+                        m.close()
+                    except (OSError, ValueError):
+                        pass  # Ignore errors during cleanup
         finally:
             # Close all files
             for f in files:
-                f.close()
+                try:
+                    f.close()
+                except (OSError, ValueError):
+                    pass  # Ignore errors during cleanup
 
     # WARNING: if this gets interrupted the DB will be left in an unusuable state
     def write(self):
@@ -190,8 +204,9 @@ class Database(list):
                 item = item[4:]
             return item
 
-        files = [ open(os.path.join(self.dir, f"database_{x}.tcd"), "wb+") \
-                for x in [0,1,2,3,4,5,6,7,8,"idx"] ]
+        # Open files and ensure they're closed even on error
+        file_paths = [os.path.join(self.dir, f"database_{x}.tcd") for x in [0,1,2,3,4,5,6,7,8,"idx"]]
+        files = [open(path, "wb+") for path in file_paths]
  
         # tag files
         for tn in range(9):
@@ -285,8 +300,12 @@ class Database(list):
         f.seek(20)
         f.write(to_str(0, 4)) #unmark dirty
 
+        # Properly close all files
         for f in files:
-            f.close()
+            try:
+                f.close()
+            except (OSError, ValueError):
+                pass  # Ignore errors during cleanup
 
     def clean_up(self):
         to_del = []

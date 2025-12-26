@@ -1,0 +1,357 @@
+# =============================================================================
+# Rockbox Database Manager Configuration Example
+# =============================================================================
+# 
+# This file demonstrates all available configuration options for the Rockbox
+# Database Manager. Copy this file to ~/.rdbm/.rdbm_config.toml and customize
+# it to your needs.
+#
+# Configuration File Location:
+#   - Linux/macOS: ~/.rdbm/.rdbm_config.toml
+#   - Windows: %USERPROFILE%\.rdbm\.rdbm_config.toml
+#
+# Or specify a custom location using the -c/--config flag:
+#   rdbm generate /path/to/music -c /path/to/custom_config.toml
+#
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Window Settings (GUI Only)
+# -----------------------------------------------------------------------------
+# These settings control the GUI window size and position. The GUI will
+# remember the last position and size automatically.
+
+[window]
+# Window dimensions in pixels
+width = 800
+height = 600
+
+# Window position (x, y coordinates)
+# Set to -1 to let the system decide the position
+x = -1
+y = -1
+
+
+# -----------------------------------------------------------------------------
+# Path Settings
+# -----------------------------------------------------------------------------
+# Recently used directories for convenience. The application will remember
+# these automatically when you use the GUI or CLI.
+
+[paths]
+# Last used music directory
+last_music_dir = ""
+
+# Last used output directory for database files
+last_output_dir = ""
+
+# Last used tags cache file
+last_tags_file = ""
+
+
+# -----------------------------------------------------------------------------
+# Format Strings
+# -----------------------------------------------------------------------------
+# Titleformat strings define how metadata is mapped to Rockbox database fields.
+# Uses foobar2000 titleformat syntax for powerful tag manipulation.
+#
+# Reference: http://wiki.hydrogenaudio.org/index.php?title=Foobar2000:Titleformat_Reference
+#
+# Basic syntax:
+#   %field%           - Insert a tag field value
+#   %<field>%         - Multiple-value tag (creates separate entries for each value)
+#   $if(%field%,...)  - Conditional formatting
+#   $if2(a,b)         - Use 'a' if present, otherwise 'b'
+#   Literal text      - Include as-is in the output
+#
+# Available fields:
+#   - artist, album, albumartist, genre, title, composer, comment
+#   - date, tracknumber, discnumber, bitrate, length
+#   - And many more metadata fields
+#
+# Notes:
+#   - All whitespace is significant in titleformat strings
+#   - Use \' to escape single quotes in literal strings
+#   - Untagged files will use '<Untagged>' as default
+#
+# -----------------------------------------------------------------------------
+
+[formats]
+# ARTIST - How artist names are displayed
+# Default: Simple artist tag
+artist = "%artist%"
+
+# Examples:
+# Multiple artists (creates separate entries for each artist):
+# artist = "%<artist>%"
+#
+# Fallback to composer if artist is missing:
+# artist = "$if2(%artist%,%composer%)"
+#
+# Sort "The Beatles" as "Beatles, The":
+# (Use this in sort_formats.artist instead)
+
+# ALBUM - How album names are displayed
+# Default: Simple album tag
+album = "%album%"
+
+# Examples:
+# Include year in album name:
+# album = "$if(%date%,%date% - ,)%album%"
+#
+# Include disc number for multi-disc albums:
+# album = "$if($greater(%totaldiscs%,1),[Disc %discnumber%] ,)%album%"
+
+# GENRE - How genres are displayed
+# Default: Simple genre tag
+genre = "%genre%"
+
+# Examples:
+# Multiple genres (creates separate entries for each genre):
+# genre = "%<genre>%"
+#
+# Normalize genre names:
+# genre = "$replace(%genre%,Heavy Metal,Metal,Hard Rock,Rock)"
+
+# COMPOSER - How composer names are displayed
+# Default: Simple composer tag
+composer = "%composer%"
+
+# Examples:
+# Classical music: Last name first
+# composer = "$if($strstr(%composer%,','),%composer%,$replace(%composer%,', ',' '))"
+
+# COMMENT - Custom comment field
+# Default: Simple comment tag
+# comment = "%comment%"
+
+# Examples:
+# Include custom tags in comments:
+# comment = "$if(%label%,Label: %label%,)"
+
+# ALBUM ARTIST - The main artist for an album
+# Default: Simple albumartist tag, fallback to artist
+# album artist = "$if2(%albumartist%,%artist%)"
+
+# Examples:
+# Use "Various Artists" for compilations:
+# album artist = "$if(%compilation%,Various Artists,$if2(%albumartist%,%artist%))"
+
+# GROUPING - Custom grouping/classification field
+# Default: Uses title (not commonly used)
+grouping = "%title%"
+
+# Examples:
+# Group by decade:
+# grouping = "$if(%date%,$left(%date%,3)0s,Unknown)"
+#
+# Group by genre and decade:
+# grouping = "%genre% - $if(%date%,$left(%date%,3)0s,Unknown)"
+
+
+# -----------------------------------------------------------------------------
+# Sort Format Strings
+# -----------------------------------------------------------------------------
+# Sort formats control how entries are sorted in the Rockbox database.
+# If empty, the display format is used for sorting.
+#
+# Common use cases:
+#   - Ignore leading articles (The, A, An)
+#   - Sort by last name for classical composers
+#   - Custom sort orders for special characters
+#
+# -----------------------------------------------------------------------------
+
+[sort_formats]
+# ARTIST SORTING
+# Default: Use the display format
+artist = ""
+
+# Examples:
+# Remove leading "The", "A", "An":
+# artist = "$swapprefix(%artist%,The,A,An)"
+#
+# Last name first for classical:
+# artist = "$if($strstr(%artist%,','),%artist%,$replace(%artist%,' ',', ',1))"
+#
+# Ignore case for sorting:
+# artist = "$lower(%artist%)"
+
+# ALBUM SORTING
+# Default: Use the display format
+album = ""
+
+# Examples:
+# Sort albums by year, then name:
+# album = "$if(%date%,%date%,9999) %album%"
+#
+# Ignore leading articles:
+# album = "$swapprefix(%album%,The,A,An)"
+
+# GENRE SORTING
+# Default: Use the display format
+genre = ""
+
+# Examples:
+# Custom genre order (Rock before Pop):
+# genre = "$replace(%genre%,Rock,1Rock,Pop,2Pop)"
+
+# COMPOSER SORTING
+# Default: Use the display format
+composer = ""
+
+# Examples:
+# Last name first:
+# composer = "$swapprefix(%composer%,Ludwig van,Wolfgang Amadeus)"
+
+
+# =============================================================================
+# ADVANCED EXAMPLES
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Example 1: Classical Music Library
+# -----------------------------------------------------------------------------
+# Optimized for classical music with proper composer handling and work grouping
+#
+# [formats]
+# artist = "%composer%"
+# album = "$if(%date%,%date% - ,)%album%"
+# composer = "%composer%"
+# grouping = "$if(%work%,%work%,%album%)"
+#
+# [sort_formats]
+# artist = "$swapprefix(%composer%,Ludwig van,Wolfgang Amadeus,Johann Sebastian)"
+# album = "$if(%date%,%date%,9999) %album%"
+# composer = "$swapprefix(%composer%,Ludwig van,Wolfgang Amadeus)"
+
+# -----------------------------------------------------------------------------
+# Example 2: Multi-Genre Rock/Metal Collection
+# -----------------------------------------------------------------------------
+# Split multiple genres and clean up genre names
+#
+# [formats]
+# artist = "%artist%"
+# genre = "%<genre>%"  # Split multiple genres
+# album = "$if(%date%,[$left(%date%,4)] ,)%album%"
+#
+# [sort_formats]
+# artist = "$swapprefix(%artist%,The,A,An)"
+# genre = "$replace(%genre%,Heavy Metal,Metal,Hard Rock,Rock,Alternative Rock,Alt Rock)"
+
+# -----------------------------------------------------------------------------
+# Example 3: Compilation Albums & Soundtracks
+# -----------------------------------------------------------------------------
+# Handle various artists albums and soundtracks specially
+#
+# [formats]
+# artist = "$if(%compilation%,Various Artists,%artist%)"
+# album artist = "$if(%compilation%,Various Artists,$if2(%albumartist%,%artist%))"
+# album = "$if(%soundtrack%,[OST] ,)%album%"
+# grouping = "$if(%soundtrack%,Soundtracks,$if(%compilation%,Compilations,%genre%))"
+#
+# [sort_formats]
+# artist = "$if(%compilation%,~Various,%artist%)"  # ~ sorts after letters
+
+# -----------------------------------------------------------------------------
+# Example 4: Minimal/Clean Configuration
+# -----------------------------------------------------------------------------
+# Simple setup with just leading article removal
+#
+# [formats]
+# artist = "%artist%"
+# album = "%album%"
+# genre = "%genre%"
+# composer = "%composer%"
+#
+# [sort_formats]
+# artist = "$swapprefix(%artist%,The,A,An)"
+# album = "$swapprefix(%album%,The,A,An)"
+
+# -----------------------------------------------------------------------------
+# Example 5: DJ/Electronic Music Collection
+# -----------------------------------------------------------------------------
+# Emphasize remixers and labels
+#
+# [formats]
+# artist = "$if(%remixer%,%artist% (%remixer% Remix),%artist%)"
+# album = "$if(%label%,[%label%] ,)%album%"
+# genre = "%genre%"
+# comment = "$if(%label%,Label: %label%,)"
+# grouping = "$if(%label%,%label%,%genre%)"
+#
+# [sort_formats]
+# artist = "$replace(%artist%,DJ ,)"  # Ignore "DJ" prefix
+# album = "%album%"  # Keep label in display only
+
+# -----------------------------------------------------------------------------
+# Example 6: Maximum Compatibility (Default)
+# -----------------------------------------------------------------------------
+# Safe defaults that work with all music collections
+#
+# [formats]
+# artist = "%artist%"
+# album = "%album%"
+# genre = "%genre%"
+# composer = "%composer%"
+#
+# [sort_formats]
+# artist = ""
+# album = ""
+# genre = ""
+# composer = ""
+
+
+# =============================================================================
+# IMPORTANT NOTES
+# =============================================================================
+#
+# 1. **Multiple Value Tags (%<field>%)**:
+#    When using multiple-value syntax like %<artist>% or %<genre>%, the database
+#    creates separate index entries for each value. A song with 2 artists and
+#    2 genres will create 4 index entries (2×2 combinations).
+#
+#    If you use multiple-value fields, you may need to update your tagnavi.config
+#    file to filter out the "<BLANK>" dummy entries that are created.
+#
+# 2. **Testing Format Strings**:
+#    Before generating a full database, test your format strings on a small
+#    subset of your music collection to ensure they work as expected.
+#
+#    Use: rdbm generate /path/to/test/folder --log-level debug
+#
+# 3. **Regenerating the Database**:
+#    After changing format strings, you must regenerate the database:
+#
+#    rm -rf .rockbox
+#    rdbm generate /path/to/music -c ~/.rdbm/.rdbm_config.toml
+#
+# 4. **Tag Cache for Speed**:
+#    For large collections, use tag caching to speed up regeneration:
+#
+#    First time: rdbm generate /music --save-tags ~/.rockbox_tags.cache
+#    Later:      rdbm generate /music --load-tags ~/.rockbox_tags.cache
+#
+# 5. **Validation**:
+#    Always validate your database after generation:
+#
+#    rdbm validate /path/to/.rockbox
+#
+# 6. **Titleformat Documentation**:
+#    Full titleformat syntax reference:
+#    http://wiki.hydrogenaudio.org/index.php?title=Foobar2000:Titleformat_Reference
+#
+#    Common functions:
+#    - $if(condition,then)         - Conditional
+#    - $if2(a,b,...)               - First non-empty value
+#    - $replace(str,old,new,...)   - Replace text
+#    - $swapprefix(str,pre,...)    - Move prefix to end
+#    - $left(str,n)                - First n characters
+#    - $right(str,n)               - Last n characters
+#    - $len(str)                   - String length
+#    - $lower(str)                 - Convert to lowercase
+#    - $upper(str)                 - Convert to uppercase
+#    - $strstr(str,substr)         - Find substring
+#    - $greater(a,b)               - Compare numbers
+#
+# =============================================================================

@@ -2,7 +2,6 @@
 
 import tempfile
 import os
-import pytest
 from rockbox_db_manager.database import Database
 from rockbox_db_manager.defs import FORMATTED_TAGS
 

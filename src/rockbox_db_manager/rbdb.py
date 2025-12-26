@@ -165,50 +165,50 @@ class IndexFile:
                ) ])
 
 def parse_tagfile(location):
-    f = open(location, "rb+")
-    m = mmap.mmap(f.fileno(), 0)
-    tf = TagFile()
+    with open(location, "rb+") as f:
+        with mmap.mmap(f.fileno(), 0) as m:
+            tf = TagFile()
 
-    tf.magic = to_int(m[0:4])
-    tf.datasize = to_int(m[4:8])
-    tf.entry_count = to_int(m[8:12])
+            tf.magic = to_int(m[0:4])
+            tf.datasize = to_int(m[4:8])
+            tf.entry_count = to_int(m[8:12])
 
-    offset = 12
-    for n in range(tf.entry_count):
-        e = TagfileEntry()
-        e.tag_length = to_int(m[offset:offset+2])
-        e.idx_id = to_int(m[offset+2: offset+4])
-        e.data = m[offset+4:offset+4+e.tag_length]
-        offset += e.tag_length + 4
-        tf.entries.append(e)
+            offset = 12
+            for n in range(tf.entry_count):
+                e = TagfileEntry()
+                e.tag_length = to_int(m[offset:offset+2])
+                e.idx_id = to_int(m[offset+2: offset+4])
+                e.data = m[offset+4:offset+4+e.tag_length]
+                offset += e.tag_length + 4
+                tf.entries.append(e)
 
-    return tf
+            return tf
 
 def parse_indexfile(location):
-    f = open(location, "rb+")
-    m = mmap.mmap(f.fileno(), 0)
-    tf = IndexFile()
+    with open(location, "rb+") as f:
+        with mmap.mmap(f.fileno(), 0) as m:
+            tf = IndexFile()
 
-    tf.magic = to_int(m[0:4])
-    tf.datasize = to_int(m[4:8])
-    tf.entry_count = to_int(m[8:12])
+            tf.magic = to_int(m[0:4])
+            tf.datasize = to_int(m[4:8])
+            tf.entry_count = to_int(m[8:12])
 
-    tf.serial = to_int(m[12:16])
-    tf.commitid = to_int(m[16:20])
-    tf.dirty = to_int(m[20:24])
+            tf.serial = to_int(m[12:16])
+            tf.commitid = to_int(m[16:20])
+            tf.dirty = to_int(m[20:24])
 
-    for n in range(tf.entry_count):
-        e = IndexEntry()
-        e.index = n
-        offset = 24+n*84
-        for n2 in range(0, 20):
-            e.tag_seek[n2] = to_int(m[offset:offset+4])
-            offset += 4
+            for n in range(tf.entry_count):
+                e = IndexEntry()
+                e.index = n
+                offset = 24+n*84
+                for n2 in range(0, 20):
+                    e.tag_seek[n2] = to_int(m[offset:offset+4])
+                    offset += 4
 
-        e.flag = to_int(m[offset:offset+4])
-        tf.entries.append(e)
+                e.flag = to_int(m[offset:offset+4])
+                tf.entries.append(e)
 
-    return tf
+            return tf
 
 
 if __name__ == '__main__':

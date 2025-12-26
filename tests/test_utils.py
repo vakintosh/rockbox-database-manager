@@ -1,7 +1,6 @@
 """Tests for utility functions (time conversions, etc.)."""
 
 import time
-import pytest
 from rockbox_db_manager.utils import mtime_to_fat, fat_to_mtime
 
 
