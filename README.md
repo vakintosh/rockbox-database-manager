@@ -66,7 +66,7 @@ rdbm generate /path/to/music
 rdbm generate /path/to/music -o /Volumes/IPOD/.rockbox
 
 # Use configuration file
-rdbm generate /path/to/music -c ~/.rockbox_config.toml
+rdbm generate /path/to/music -c ~/.rdbm/.rdbm_config.toml
 
 # Use tag cache for faster regeneration
 rdbm generate /path/to/music --load-tags tags.cache --save-tags tags.cache

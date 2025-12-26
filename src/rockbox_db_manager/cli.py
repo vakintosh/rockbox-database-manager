@@ -8,7 +8,6 @@ from pathlib import Path
 
 from .database import Database
 from .config import Config
-from .backup import create_backup
 
 # Version - should match pyproject.toml
 __version__ = "0.1.0"
@@ -164,25 +163,6 @@ def cmd_generate(args: argparse.Namespace) -> None:
 
     output_path.mkdir(parents=True, exist_ok=True)
 
-    # Create backup before writing if enabled and not disabled via args
-    if not args.no_backup:
-        config = Config()
-        if config.is_backup_enabled():
-            logging.info("Creating backup before writing database...")
-            backup_path = create_backup(
-                str(music_path),
-                backup_dir=config.get_backup_dir() or None,
-                callback=lambda msg: logging.info(msg)
-                if isinstance(msg, str)
-                else None,
-                max_backups=config.get_max_backups(),
-                skip_window_minutes=config.get_backup_skip_window_minutes(),
-            )
-            if backup_path:
-                logging.info(f"Backup created: {backup_path}")
-            else:
-                logging.warning("Backup failed, but continuing with database write")
-
     logging.info(f"Writing database to: {output_path}")
     db.write(
         str(output_path),
@@ -267,27 +247,6 @@ def cmd_write(args: argparse.Namespace) -> None:
 
     output_path.mkdir(parents=True, exist_ok=True)
 
-    # Create backup before writing if enabled and not disabled via args
-    # Try to determine music path from database path (parent directory)
-    music_path = db_path.parent
-    if not args.no_backup:
-        config = Config()
-        if config.is_backup_enabled():
-            logging.info("Creating backup before writing database...")
-            backup_path = create_backup(
-                str(music_path),
-                backup_dir=config.get_backup_dir() or None,
-                callback=lambda msg: logging.info(msg)
-                if isinstance(msg, str)
-                else None,
-                max_backups=config.get_max_backups(),
-                skip_window_minutes=config.get_backup_skip_window_minutes(),
-            )
-            if backup_path:
-                logging.info(f"Backup created: {backup_path}")
-            else:
-                logging.warning("Backup failed, but continuing with database write")
-
     logging.info(f"Writing database to: {output_path}")
     db.write(
         str(output_path),
@@ -315,7 +274,7 @@ Examples:
   rdbm generate /path/to/music -o /Volumes/IPOD/.rockbox
 
   # Generate with configuration file
-  rdbm generate /path/to/music -c ~/.rockbox_config.toml
+  rdbm generate /path/to/music -c ~/.rdbm/.rdbm_config.toml
 
   # Use tag cache to speed up generation
   rdbm generate /path/to/music --load-tags tags.cache --save-tags tags.cache
@@ -366,11 +325,6 @@ For GUI mode, use: rockbox-db-manager-gui
     generate_parser.add_argument(
         "--save-tags", help="Save tags to cache file for future use"
     )
-    generate_parser.add_argument(
-        "--no-backup",
-        action="store_true",
-        help="Skip creating backup before writing database",
-    )
     generate_parser.set_defaults(func=cmd_generate)
 
     # Load command
@@ -390,11 +344,6 @@ For GUI mode, use: rockbox-db-manager-gui
     )
     write_parser.add_argument("database_path", help="Path to source database directory")
     write_parser.add_argument("output_path", help="Path to destination directory")
-    write_parser.add_argument(
-        "--no-backup",
-        action="store_true",
-        help="Skip creating backup before writing database",
-    )
     write_parser.set_defaults(func=cmd_write)
 
     # Parse arguments

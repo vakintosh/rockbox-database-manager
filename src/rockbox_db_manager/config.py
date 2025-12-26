@@ -25,27 +25,19 @@ except ImportError:
 
 
 def get_config_dir() -> Path:
-    """Get the configuration directory based on platform.
+    """Get the configuration directory.
 
     Returns:
-        Path to config directory (~/.config/rockbox-db-manager on Linux/Mac,
-        %APPDATA%/rockbox-db-manager on Windows)
+        Path to config directory (~/.rdbm on all platforms)
     """
-    if sys.platform == "win32":
-        base = Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
-    elif sys.platform == "darwin":
-        base = Path.home() / "Library" / "Application Support"
-    else:
-        base = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
-
-    config_dir = base / "rockbox-db-manager"
+    config_dir = Path.home() / ".rdbm"
     config_dir.mkdir(parents=True, exist_ok=True)
     return config_dir
 
 
 def get_config_path() -> Path:
     """Get the full path to the config file."""
-    return get_config_dir() / "config.toml"
+    return get_config_dir() / ".rdbm_config.toml"
 
 
 class Config:
@@ -76,12 +68,6 @@ class Config:
             "album": "",
             "genre": "",
             "composer": "",
-        },
-        "backup": {
-            "enabled": True,  # Enable backups before write operations
-            "backup_dir": "",  # Empty means use default (.rockbox_backups in music folder parent)
-            "max_backups": 5,  # Maximum number of backups to keep
-            "skip_window_minutes": 5,  # Skip backup if one was created within this many minutes
         },
     }
 
@@ -208,44 +194,3 @@ class Config:
     def get_all_sort_formats(self) -> Dict[str, str]:
         """Get all sort format strings."""
         return self.data["sort_formats"].copy()
-
-    # Backup settings
-    def is_backup_enabled(self) -> bool:
-        """Check if backups are enabled."""
-        return self.data.get("backup", {}).get("enabled", True)
-
-    def set_backup_enabled(self, enabled: bool) -> None:
-        """Enable or disable backups."""
-        if "backup" not in self.data:
-            self.data["backup"] = {}
-        self.data["backup"]["enabled"] = enabled
-
-    def get_backup_dir(self) -> str:
-        """Get backup directory (empty string means use default)."""
-        return self.data.get("backup", {}).get("backup_dir", "")
-
-    def set_backup_dir(self, path: str) -> None:
-        """Set backup directory."""
-        if "backup" not in self.data:
-            self.data["backup"] = {}
-        self.data["backup"]["backup_dir"] = path
-
-    def get_max_backups(self) -> int:
-        """Get maximum number of backups to keep."""
-        return self.data.get("backup", {}).get("max_backups", 5)
-
-    def set_max_backups(self, count: int) -> None:
-        """Set maximum number of backups to keep."""
-        if "backup" not in self.data:
-            self.data["backup"] = {}
-        self.data["backup"]["max_backups"] = count
-
-    def get_backup_skip_window_minutes(self) -> int:
-        """Get the time window (in minutes) to skip duplicate backups."""
-        return self.data.get("backup", {}).get("skip_window_minutes", 5)
-
-    def set_backup_skip_window_minutes(self, minutes: int) -> None:
-        """Set the time window (in minutes) to skip duplicate backups."""
-        if "backup" not in self.data:
-            self.data["backup"] = {}
-        self.data["backup"]["skip_window_minutes"] = minutes

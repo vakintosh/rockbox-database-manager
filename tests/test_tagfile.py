@@ -1,9 +1,10 @@
 """Tests for TagFile and TagEntry classes."""
 
+import io
 import struct
 import pytest
 from rockbox_db_manager.tagfile import TagFile, TagEntry
-from rockbox_db_manager.defs import MAGIC, ENCODING
+from rockbox_db_manager.defs import MAGIC, ENCODING, SUPPORTED_VERSIONS
 
 
 class TestTagEntry:
@@ -29,6 +30,21 @@ class TestTagEntry:
         
         # Should get back the same text
         assert entry.data == text
+    
+    def test_tag_entry_with_latin1_fallback(self):
+        """Test TagEntry handles non-UTF-8 data gracefully."""
+        # Create an entry with Latin-1 encoded data (degree symbol)
+        entry = TagEntry()
+        # Set raw data directly to bypass UTF-8 encoding
+        entry._TagEntry__data = b"Artist\xb0Name"  # 0xb0 = degree symbol in Latin-1
+        
+        # Should decode using Latin-1 fallback
+        data = entry.data
+        assert isinstance(data, str)
+        assert "Artist" in data
+        assert "Name" in data
+        # In Latin-1, 0xb0 is the degree symbol °
+        assert "°" in data or "?" in data  # Might be ° or replacement char
 
 
 class TestTagFile:
@@ -94,3 +110,69 @@ class TestTagFile:
         # Empty tagfile should have 0 size
         assert tagfile.size == 0
         assert tagfile.count == 0
+
+
+class TestTagFileVersionSupport:
+    """Test TagFile support for multiple database versions."""
+    
+    def test_supported_versions_defined(self):
+        """Test that supported versions are properly defined."""
+        assert len(SUPPORTED_VERSIONS) >= 2
+        assert 1413695501 in SUPPORTED_VERSIONS  # Version 13 (0x0d)
+        assert 1413695504 in SUPPORTED_VERSIONS  # Version 16 (0x10)
+    
+    def test_read_version_13(self):
+        """Test reading a version 13 (0x0d) database file."""
+        # Create a minimal tagfile with version 13
+        data = io.BytesIO()
+        magic = 1413695501  # Version 13
+        size = 0
+        count = 0
+        data.write(struct.pack('III', magic, size, count))
+        data.seek(0)
+        
+        tagfile = TagFile.from_file(data)
+        assert tagfile.magic == magic
+        assert tagfile.count == 0
+    
+    def test_read_version_16(self):
+        """Test reading a version 16 (0x10) database file."""
+        # Create a minimal tagfile with version 16
+        data = io.BytesIO()
+        magic = 1413695504  # Version 16
+        size = 0
+        count = 0
+        data.write(struct.pack('III', magic, size, count))
+        data.seek(0)
+        
+        tagfile = TagFile.from_file(data)
+        assert tagfile.magic == magic
+        assert tagfile.count == 0
+    
+    def test_reject_unsupported_version(self):
+        """Test that unsupported versions are rejected."""
+        # Create a tagfile with an invalid version
+        data = io.BytesIO()
+        magic = 9999999  # Invalid version
+        size = 0
+        count = 0
+        data.write(struct.pack('III', magic, size, count))
+        data.seek(0)
+        
+        with pytest.raises(ValueError) as excinfo:
+            TagFile.from_file(data)
+        assert "Unsupported database version" in str(excinfo.value)
+        assert "9999999" in str(excinfo.value)
+    
+    def test_version_preserved_on_read(self):
+        """Test that the version from file is preserved after reading."""
+        # Test with version 16
+        data = io.BytesIO()
+        magic = 1413695504
+        size = 0
+        count = 0
+        data.write(struct.pack('III', magic, size, count))
+        data.seek(0)
+        
+        tagfile = TagFile.from_file(data)
+        assert tagfile.magic == 1413695504  # Should preserve v16, not default to v13

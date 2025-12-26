@@ -2,7 +2,7 @@ import os
 import struct
 from operator import attrgetter
 
-from .defs import MAGIC, ENCODING
+from .defs import MAGIC, ENCODING, SUPPORTED_VERSIONS
 
 class TagFile:
     def __init__(self, entries=None):
@@ -66,8 +66,15 @@ class TagFile:
             
             magic, size, entry_count = struct.unpack('III', header)
             
-            if magic != MAGIC:
-                raise ValueError(f"Invalid magic number: expected {MAGIC}, got {magic}. File may be corrupted.")
+            if magic not in SUPPORTED_VERSIONS:
+                raise ValueError(
+                    f"Unsupported database version: got {magic} (0x{magic:08x}). "
+                    f"Supported versions: {[f'{v} (0x{v:08x})' for v in SUPPORTED_VERSIONS]}. "
+                    f"File may be corrupted or from a newer Rockbox version."
+                )
+            
+            # Store the actual magic from file for proper round-trip
+            tf.magic = magic
             
             if entry_count < 0 or entry_count > 1000000:  # Sanity check
                 raise ValueError(f"Invalid entry count: {entry_count}. File may be corrupted.")
@@ -136,7 +143,22 @@ class TagEntry:
         self.index_entries.append(entry)
 
     def __get_data(self):
-        return str(self.__data, ENCODING)
+        """Decode tag data with fallback encoding support.
+        
+        Try UTF-8 first, then fall back to Latin-1 (ISO-8859-1) which can
+        decode any byte sequence. This handles legacy databases with mixed
+        encodings from various music file tags.
+        """
+        try:
+            return str(self.__data, ENCODING)
+        except UnicodeDecodeError:
+            # Try Latin-1 as fallback - it can decode any byte sequence
+            try:
+                return str(self.__data, 'latin-1')
+            except:
+                # Last resort: replace invalid characters
+                return str(self.__data, ENCODING, errors='replace')
+    
     def __set_data(self, data):
         self.__data = data.encode(ENCODING)
     data = property(__get_data, __set_data)

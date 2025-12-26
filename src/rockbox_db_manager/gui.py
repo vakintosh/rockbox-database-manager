@@ -11,7 +11,6 @@ from .database import Database
 from .defs import FORMATTED_TAGS
 from . import wxFB_gui
 from .config import Config
-from .backup import create_backup
 
 
 # -------------------------------------------------------------------------------
@@ -271,9 +270,6 @@ class MyFrame(wxFB_gui.Frame):
         self.mainpanel.Layout()
 
         self.database = Database()
-
-        # Track the music directory for backups
-        self.music_path = None
 
         self.thread_info = []  # List of currently running info panels
 
@@ -652,9 +648,6 @@ class MyFrame(wxFB_gui.Frame):
         self.config.set_last_music_dir(dir)
         self.config.save()
 
-        # Track music path for backup operations
-        self.music_path = dir
-
         def OnStart(evt):
             evt.info.timer.Start()
 
@@ -685,72 +678,10 @@ class MyFrame(wxFB_gui.Frame):
         )
 
     def OnGenerateDatabase(self, evt):
-        # Check if we need to create a backup
-        should_backup = self.config.is_backup_enabled() and self.music_path
-
-        if should_backup:
-            # Ask user for confirmation
-            dlg = wx.MessageDialog(
-                self,
-                f"A backup of the music folder will be created before generating the database.\n\n"
-                f"Music folder: {self.music_path}\n\n"
-                f"Continue?",
-                "Backup Before Generate",
-                wx.YES_NO | wx.ICON_QUESTION,
-            )
-            if dlg.ShowModal() != wx.ID_YES:
-                dlg.Destroy()
-                return
-            dlg.Destroy()
-
-            # Create backup
-            backup_info = self.infopanel.MakeRow("Creating backup")
-            backup_info.status = "Starting backup..."
-            backup_info.timer.Start()
-            wx.Yield()
-
-            def backup_worker():
-                try:
-                    backup_path = create_backup(
-                        self.music_path,
-                        backup_dir=self.config.get_backup_dir() or None,
-                        callback=lambda msg: ThreadEvent.post_callback(
-                            self, lambda e: None, backup_info, msg
-                        ),
-                        max_backups=self.config.get_max_backups(),
-                        skip_window_minutes=self.config.get_backup_skip_window_minutes(),
-                    )
-                    return backup_path
-                except Exception:
-                    return None
-
-            def OnBackupStart(evt):
-                evt.info.status = "Creating backup..."
-
-            def OnBackupMessage(evt):
-                evt.info.status = evt.message
-
-            def OnBackupEnd(evt):
-                evt.info.timer.Stop()
-                evt.info.status = "Backup complete"
-                evt.info.parent.Layout()
-                evt.info.parent.Refresh()
-                # Now proceed with generate
-                wx.CallAfter(self._do_generate_database)
-
-            self.start_thread(
-                backup_worker,
-                _start=OnBackupStart,
-                _message=OnBackupMessage,
-                _end=OnBackupEnd,
-                _info=backup_info,
-            )
-        else:
-            # No backup needed, proceed directly
-            self._do_generate_database()
+        self._do_generate_database()
 
     def _do_generate_database(self):
-        """Internal method to perform database generation (after backup if needed)."""
+        """Internal method to perform database generation."""
         # Collect format strings from GUI (fast operation)
         format_strings = {}
         for field in FORMATTED_TAGS:
@@ -811,9 +742,6 @@ class MyFrame(wxFB_gui.Frame):
         )
 
     def OnWriteDatabase(self, evt):
-        # Check if we need to create a backup
-        should_backup = self.config.is_backup_enabled() and self.music_path
-
         default_dir = self.config.get_last_output_dir()
         write_dir = wx.DirSelector(
             "Database Output Directory", default_path=default_dir or ""
@@ -840,69 +768,10 @@ class MyFrame(wxFB_gui.Frame):
         self.config.set_last_output_dir(write_dir)
         self.config.save()
 
-        if should_backup:
-            # Ask user for confirmation
-            dlg = wx.MessageDialog(
-                self,
-                f"A backup of the music folder will be created before writing the database.\n\n"
-                f"Music folder: {self.music_path}\n\n"
-                f"Continue?",
-                "Backup Before Write",
-                wx.YES_NO | wx.ICON_QUESTION,
-            )
-            if dlg.ShowModal() != wx.ID_YES:
-                dlg.Destroy()
-                return
-            dlg.Destroy()
-
-            # Create backup
-            backup_info = self.infopanel.MakeRow("Creating backup")
-            backup_info.status = "Starting backup..."
-            backup_info.timer.Start()
-            wx.Yield()
-
-            def backup_worker():
-                try:
-                    backup_path = create_backup(
-                        self.music_path,
-                        backup_dir=self.config.get_backup_dir() or None,
-                        callback=lambda msg: ThreadEvent.post_callback(
-                            self, lambda e: None, backup_info, msg
-                        ),
-                        max_backups=self.config.get_max_backups(),
-                        skip_window_minutes=self.config.get_backup_skip_window_minutes(),
-                    )
-                    return backup_path
-                except Exception:
-                    return None
-
-            def OnBackupStart(evt):
-                evt.info.status = "Creating backup..."
-
-            def OnBackupMessage(evt):
-                evt.info.status = evt.message
-
-            def OnBackupEnd(evt):
-                evt.info.timer.Stop()
-                evt.info.status = "Backup complete"
-                evt.info.parent.Layout()
-                evt.info.parent.Refresh()
-                # Now proceed with write
-                wx.CallAfter(self._do_write_database, write_dir)
-
-            self.start_thread(
-                backup_worker,
-                _start=OnBackupStart,
-                _message=OnBackupMessage,
-                _end=OnBackupEnd,
-                _info=backup_info,
-            )
-        else:
-            # No backup needed, proceed directly
-            self._do_write_database(write_dir)
+        self._do_write_database(write_dir)
 
     def _do_write_database(self, write_dir):
-        """Internal method to perform database write (after backup if needed)."""
+        """Internal method to perform database write."""
 
         def OnStart(evt):
             evt.info.timer.Start()
@@ -1092,7 +961,17 @@ class FieldPane(wxFB_gui.FieldPane):
             if value not in values:
                 values[value.data] = value.sort_value()
 
-        values = sorted(values.keys(), key=lambda k: values[k])
+        # Sort with mixed type handling (strings vs integers)
+        def sort_key(k):
+            v = values[k]
+            # Return tuple: (type_priority, value) to sort by type first, then value
+            # Strings (including <Invalid Reference>) sort before numbers
+            if isinstance(v, str):
+                return (0, v.lower())
+            else:
+                return (1, v)
+        
+        values = sorted(values.keys(), key=sort_key)
         self.listbox.Set(["<All>"] + values)
         self.listbox.SetSelection(0)
         self.PostEvent("<All>")
