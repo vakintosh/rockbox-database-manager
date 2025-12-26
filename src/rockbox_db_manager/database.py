@@ -2,6 +2,7 @@ import os
 import pickle
 import gc
 import multiprocessing
+from collections import OrderedDict
 from itertools import product
 from typing import Optional, Callable, List, Any
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -24,31 +25,16 @@ from .tagfile import TagFile, TagEntry
 from .indexfile import IndexFile, IndexEntry
 
 def myprint(*args, **kwargs):
-    """Emulates the print() function.
+    """Simple print wrapper for database callback functions.
     
-    Arguments that cannot be printed are converted using repr()
-
-    This is used as the default callback function for Dabatabase functions
-    that ask for a callback.
-
+    This is used as the default callback function for Database functions
+    that ask for a callback. In Python 3.11+, str() always works.
     """
-    converted_args = []
-    for a in args:
-        try:
-            converted_args.append(str(a))
-        except UnicodeEncodeError:
-            converted_args.append(repr(a))
-
-    try:
-        sep = kwargs['sep']
-    except KeyError:
-        sep = ' '
-    try:
-        end = kwargs['end']
-    except KeyError:
-        end = '\n'
+    sep = kwargs.get('sep', ' ')
+    end = kwargs.get('end', '\n')
+    
     import sys
-    sys.stdout.write(sep.join(converted_args) + end)
+    sys.stdout.write(sep.join(str(a) for a in args) + end)
 
 class Database:
 
@@ -66,7 +52,8 @@ class Database:
     #
     # The format is
     #   { u'/path/to/file/without/drive' :  ( (size, mtime), Tags ) }
-    tag_cache = {}
+    # Using OrderedDict for LRU (Least Recently Used) cache eviction
+    tag_cache = OrderedDict()
     MAX_CACHE_SIZE = 10000  # Maximum number of entries to keep in cache
 
     def load_tags(self, path, callback=None):
@@ -134,15 +121,16 @@ class Database:
     
     @classmethod
     def _trim_cache(cls):
-        """Trim cache to 80% of MAX_CACHE_SIZE by removing oldest 20% of entries.
+        """Trim cache to 80% of MAX_CACHE_SIZE by removing least recently used 20% of entries.
         
         This is called when cache exceeds MAX_CACHE_SIZE to prevent unbounded growth.
+        Uses LRU (Least Recently Used) eviction strategy with OrderedDict.
         """
         if len(cls.tag_cache) > cls.MAX_CACHE_SIZE:
             remove_count = len(cls.tag_cache) // 5  # Remove 20%
-            keys_to_remove = list(cls.tag_cache.keys())[:remove_count]
-            for key in keys_to_remove:
-                del cls.tag_cache[key]
+            # Remove oldest entries (LRU) - first items in OrderedDict
+            for _ in range(remove_count):
+                cls.tag_cache.popitem(last=False)  # Remove from beginning (oldest)
             gc.collect()
 
 
@@ -227,6 +215,8 @@ class Database:
 
         try:
             cached_size, cached_mtime = self.tag_cache[lowerpath][0]
+            # Move to end for LRU (mark as recently used)
+            self.tag_cache.move_to_end(lowerpath)
         except KeyError:
             if tags is None:
                 tags = tagging.read(path)
@@ -237,6 +227,8 @@ class Database:
         else:
             if mtime > cached_mtime:
                 self.tag_cache[lowerpath] = ((size, mtime), tags)
+                # Move to end after update
+                self.tag_cache.move_to_end(lowerpath)
         self.paths.add(lowerpath)
 
     def add_file(self, file: str, callback: Callable = myprint) -> None:
@@ -442,8 +434,8 @@ class Database:
             self._generate_database_sequential(sorted_paths, formats, callback, batch_size)
         
         # Final progress update
-        if callback and total_paths % batch_size != 0:
-            callback(f"Generating database... {total_paths}/{total_paths}")
+        if callback:
+            callback(total_paths, total_paths)
         
         for field in FILE_TAGS:
             self[field].sort()
@@ -467,7 +459,7 @@ class Database:
             path = path.replace(os.sep, '/')
 
             if callback and i % batch_size == 0:
-                callback(f"Generating database... {i}/{total_paths}")
+                callback(i, total_paths)
 
             entry = IndexEntry()
 
@@ -608,7 +600,7 @@ class Database:
                         processed += 1
                 
                 if callback:
-                    callback(f"Generating database... {processed}/{total_paths}")
+                    callback(processed, total_paths)
     
     def _process_entry(self, entry_data, formats):
         """Process a single entry for database generation."""

@@ -1,12 +1,12 @@
 [project]
 name = "rockbox-db-manager"
-version = "0.1.0"
-description = "A Python 3 application for managing Rockbox database files with a wxPython GUI"
+version = "0.2.0"
+description = "A Python application for managing Rockbox database files with a wxPython GUI and CLI."
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [
-    { name = "Rockbox DB Manager Contributors" }
-]
+    {name = "Vakintosh", email = hello@vakintosh.com}
+]"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: End Users/Desktop",
@@ -19,7 +19,6 @@ classifiers = [
 dependencies = [
     "mutagen>=1.47.0",
     "wxpython>=4.2.4",
-    "tomli>=2.0.1; python_version<'3.11'",
     "tomli-w>=1.0.0",
     "rich>=13.0.0",
 ]

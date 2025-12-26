@@ -221,7 +221,7 @@ class TagEntry:
     def size(self):
         return self.length + 4 * 2
 
-    def __unicode__(self):
+    def __str__(self):
         return self.data
 
     def __repr__(self):

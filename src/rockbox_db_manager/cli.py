@@ -13,6 +13,7 @@ from rich.table import Table
 
 from .database import Database
 from .config import Config
+from . import rbdb
 
 # Version - should match pyproject.toml
 __version__ = "0.1.0"
@@ -161,17 +162,14 @@ def cmd_generate(args: argparse.Namespace) -> None:
     console = Console()
     
     if logging.getLogger().level <= logging.INFO:
-        # Use progress bar for info level and above
+        # Use progress bar with message and timer
         with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            TextColumn("[cyan]{task.completed} files"),
+            TextColumn("[cyan]Scanning music directory..."),
             TimeElapsedColumn(),
             console=console,
         ) as progress:
-            # Scanning task
-            scan_task = progress.add_task("[cyan]Scanning music directory...", total=None)
+            # Scanning task - message and timer only
+            scan_task = progress.add_task("", total=None)
             callback = ProgressCallback(progress, scan_task)
             
             parallel_flag = not (hasattr(args, 'no_parallel') and args.no_parallel)
@@ -223,10 +221,10 @@ def cmd_generate(args: argparse.Namespace) -> None:
     ) as progress:
         gen_task = progress.add_task("generate", total=total_files)
         
-        def gen_callback(msg):
+        def gen_callback(current_count, total_count):
             if logging.getLogger().level <= logging.DEBUG:
-                log_callback(msg)
-            progress.advance(gen_task, 1)
+                log_callback(f"Generating database... {current_count}/{total_count}")
+            progress.update(gen_task, completed=current_count)
         
         parallel_flag = not (hasattr(args, 'no_parallel') and args.no_parallel)
         db.generate_database(
@@ -493,12 +491,145 @@ def cmd_write(args: argparse.Namespace) -> None:
     print(f"  To:   {output_path}")
 
 
+def cmd_inspect(args: argparse.Namespace) -> None:
+    """Inspect raw database file structure.
+
+    Args:
+        args: Parsed command-line arguments
+    """
+    console = Console()
+    
+    # Determine which file to read
+    if args.file_number is not None:
+        if args.file_number < 0 or args.file_number > 8:
+            console.print("[red]Error: File number must be between 0 and 8[/red]")
+            sys.exit(1)
+        
+        filename = f"database_{args.file_number}.tcd"
+        file_type = rbdb.TAGS[args.file_number]
+    else:
+        filename = "database_idx.tcd"
+        file_type = "index"
+    
+    file_path = Path(args.database_path) / filename
+    
+    if not file_path.exists():
+        console.print(f"[red]Error: File not found: {file_path}[/red]")
+        sys.exit(1)
+    
+    console.print(f"[cyan]Reading database file: {file_path}[/cyan]")
+    console.print(f"[cyan]File type: {file_type}[/cyan]")
+    console.print(f"[cyan]File size: {file_path.stat().st_size:,} bytes[/cyan]\n")
+    
+    try:
+        # Parse the file
+        if file_type == "index":
+            result = rbdb.parse_indexfile(str(file_path))
+            
+            # Display header information
+            table = Table(title="Index File Header", show_header=False)
+            table.add_column("Field", style="cyan", width=15)
+            table.add_column("Value", style="magenta")
+            
+            table.add_row("Magic", f"0x{result.magic:08x}")
+            table.add_row("Data Size", f"{result.datasize:,} bytes")
+            table.add_row("Entry Count", str(result.entry_count))
+            table.add_row("Serial", str(result.serial))
+            table.add_row("Commit ID", str(result.commitid))
+            table.add_row("Dirty", "Yes" if result.dirty else "No")
+            
+            console.print(table)
+            console.print()
+            
+            # Show sample entries if not in quiet mode
+            if not args.quiet:
+                if result.entry_count > 0:
+                    console.print(f"[cyan]First {min(5, result.entry_count)} entries:[/cyan]\n")
+                    for i, entry in enumerate(result.entries[:5]):
+                        console.print(f"[yellow]Entry {i}:[/yellow]")
+                        console.print(f"  Flags: {entry.get_flags()}")
+                        console.print(f"  Tag Seeks: {entry.tag_seek[:5]}... (showing first 5)")
+                        console.print()
+                    
+                    if result.entry_count > 5:
+                        console.print(f"[dim]... and {result.entry_count - 5} more entries[/dim]\n")
+        else:
+            result = rbdb.parse_tagfile(str(file_path))
+            
+            # Display header information
+            table = Table(title=f"Tag File Header ({file_type})", show_header=False)
+            table.add_column("Field", style="cyan", width=15)
+            table.add_column("Value", style="magenta")
+            
+            table.add_row("Magic", f"0x{result.magic:08x}")
+            table.add_row("Data Size", f"{result.datasize:,} bytes")
+            table.add_row("Entry Count", str(result.entry_count))
+            
+            console.print(table)
+            console.print()
+            
+            # Show sample entries if not in quiet mode
+            if not args.quiet:
+                if result.entry_count > 0:
+                    console.print(f"[cyan]First {min(10, result.entry_count)} entries:[/cyan]\n")
+                    entries_table = Table()
+                    entries_table.add_column("Index", style="cyan", justify="right")
+                    entries_table.add_column("ID", style="yellow", justify="right")
+                    entries_table.add_column("Length", style="green", justify="right")
+                    entries_table.add_column("Data", style="magenta")
+                    
+                    for i, entry in enumerate(result.entries[:10]):
+                        # Decode data for display
+                        try:
+                            data_str = entry.data.split(b'\x00')[0].decode('utf-8', errors='replace')
+                            if len(data_str) > 50:
+                                data_str = data_str[:47] + "..."
+                        except (AttributeError, UnicodeDecodeError, IndexError):
+                            data_str = repr(entry.data[:50])
+                        
+                        entries_table.add_row(
+                            str(i),
+                            str(entry.idx_id),
+                            str(entry.tag_length),
+                            data_str
+                        )
+                    
+                    console.print(entries_table)
+                    console.print()
+                    
+                    if result.entry_count > 10:
+                        console.print(f"[dim]... and {result.entry_count - 10} more entries[/dim]\n")
+        
+        # Print full output if verbose mode
+        if args.verbose:
+            console.print("[cyan]Full raw output:[/cyan]\n")
+            console.print(str(result))
+        
+    except Exception as e:
+        console.print(f"[red]Error parsing file: {e}[/red]")
+        if logging.getLogger().level <= logging.DEBUG:
+            import traceback
+            console.print(traceback.format_exc())
+        sys.exit(1)
+
+
 def main() -> None:
     """Main CLI entry point."""
+    # Create parent parser for common arguments
+    parent_parser = argparse.ArgumentParser(add_help=False)
+    parent_parser.add_argument(
+        "--log-level",
+        "-l",
+        choices=["debug", "info", "warning", "error"],
+        default="info",
+        help="Set logging level (default: info)",
+    )
+    
     parser = argparse.ArgumentParser(
         prog="rdbm",
         description="Rockbox Database Manager - Generate and manage Rockbox database files",
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        parents=[parent_parser],
         epilog="""
 Examples:
   # Generate database from music folder (with parallel processing)
@@ -528,6 +659,15 @@ Examples:
   # Copy database to new location
   rdbm write /Volumes/IPOD/.rockbox /backup/.rockbox
 
+  # Inspect raw database file structure (index file)
+  rdbm inspect /Volumes/IPOD/.rockbox
+
+  # Inspect specific tag file (e.g., artist database)
+  rdbm inspect /Volumes/IPOD/.rockbox 0
+
+  # Inspect title database with verbose output
+  rdbm inspect /Volumes/IPOD/.rockbox 3 --verbose
+
   # Run with verbose logging
   rdbm generate /path/to/music --log-level debug
 
@@ -539,14 +679,6 @@ For GUI mode, use: rockbox-db-manager-gui
         "--version", "-v", action="version", version=f"%(prog)s {__version__}"
     )
 
-    parser.add_argument(
-        "--log-level",
-        "-l",
-        choices=["debug", "info", "warning", "error"],
-        default="info",
-        help="Set logging level (default: info)",
-    )
-
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
 
     # Generate command
@@ -554,6 +686,7 @@ For GUI mode, use: rockbox-db-manager-gui
         "generate",
         help="Generate Rockbox database from music folder",
         description="Scan music folder and generate Rockbox database files",
+        parents=[parent_parser],
     )
     generate_parser.add_argument("music_path", help="Path to music folder to scan")
     generate_parser.add_argument(
@@ -586,6 +719,7 @@ For GUI mode, use: rockbox-db-manager-gui
         "load",
         help="Load and display database information",
         description="Read existing Rockbox database and show information",
+        parents=[parent_parser],
     )
     load_parser.add_argument("database_path", help="Path to database directory")
     load_parser.set_defaults(func=cmd_load)
@@ -595,6 +729,7 @@ For GUI mode, use: rockbox-db-manager-gui
         "validate",
         help="Validate database integrity",
         description="Check database files for corruption and structural issues",
+        parents=[parent_parser],
     )
     validate_parser.add_argument("database_path", help="Path to database directory")
     validate_parser.set_defaults(func=cmd_validate)
@@ -604,10 +739,38 @@ For GUI mode, use: rockbox-db-manager-gui
         "write",
         help="Copy database to new location",
         description="Load database and write to a different location",
+        parents=[parent_parser],
     )
     write_parser.add_argument("database_path", help="Path to source database directory")
     write_parser.add_argument("output_path", help="Path to destination directory")
     write_parser.set_defaults(func=cmd_write)
+
+    # Inspect command
+    inspect_parser = subparsers.add_parser(
+        "inspect",
+        help="Inspect raw database file structure",
+        description="Parse and display raw Rockbox database file contents (low-level inspection)",
+        parents=[parent_parser],
+    )
+    inspect_parser.add_argument("database_path", help="Path to database directory")
+    inspect_parser.add_argument(
+        "file_number",
+        type=int,
+        nargs="?",
+        help="Database file number (0-8): 0=artist, 1=album, 2=genre, 3=title, 4=filename, "
+             "5=composer, 6=comment, 7=albumartist, 8=grouping. Omit for index file."
+    )
+    inspect_parser.add_argument(
+        "-q", "--quiet",
+        action="store_true",
+        help="Show only header information, not entries"
+    )
+    inspect_parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Show complete raw output"
+    )
+    inspect_parser.set_defaults(func=cmd_inspect)
 
     # Parse arguments
     args = parser.parse_args()

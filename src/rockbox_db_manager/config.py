@@ -4,19 +4,9 @@ Handles saving and loading user preferences including format strings,
 window positions, and last used directories.
 """
 
-import os
-import sys
+import tomllib
 from pathlib import Path
 from typing import Dict, Any, Tuple
-
-# Python 3.11+ has tomllib built-in, earlier versions need tomli
-if sys.version_info >= (3, 11):
-    import tomllib
-else:
-    try:
-        import tomli as tomllib
-    except ImportError:
-        tomllib = None  # type: ignore
 
 try:
     import tomli_w
@@ -84,10 +74,6 @@ class Config:
             True if loaded successfully, False if file doesn't exist or error occurred
         """
         if not self.config_path.exists():
-            return False
-
-        if tomllib is None:
-            print("Warning: TOML library not available, using default config")
             return False
 
         try:

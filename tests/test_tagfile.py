@@ -4,7 +4,7 @@ import io
 import struct
 import pytest
 from rockbox_db_manager.tagfile import TagFile, TagEntry
-from rockbox_db_manager.defs import MAGIC, ENCODING, SUPPORTED_VERSIONS
+from rockbox_db_manager.defs import MAGIC, SUPPORTED_VERSIONS
 
 
 class TestTagEntry:
