@@ -65,22 +65,32 @@ class Database:
     tag_cache = {}
 
     def load_tags(self, path, callback=None):
-        """Update paths and tag_cache from a pickled file."""
+        """Update paths and tag_cache from a pickled file.
+        
+        Loads tags efficiently with error handling for corrupted files.
+        """
 
         try:
             with open(path, 'rb') as f:
                 nItems = pickle.load(f)
                 assert isinstance(nItems, int)
-                callback(nItems)
+                if callback:
+                    callback(nItems)
                 for i in range(nItems):
                     try:
                         path, ((size, mtime), tags) = pickle.load(f)
                     except EOFError:
                         break
+                    except (pickle.UnpicklingError, ValueError) as e:
+                        # Skip corrupted entries
+                        if callback:
+                            callback(f"Warning: Skipped corrupted entry {i+1}/{nItems}: {e}")
+                        continue
                     else:
-                        callback(path)
+                        if callback:
+                            callback(path)
                         self.__add_file(path, size, mtime, tags)
-        except OSError:
+        except (OSError, IOError):
             pass
 
     def save_tags(self, path: str, callback: Optional[Callable] = None) -> None:
@@ -98,6 +108,20 @@ class Database:
                 if callback:
                     callback(path)
                 pickle.dump((path, self.tag_cache[path]), f, 2)
+
+    @classmethod
+    def cleanup_cache(cls, keep_paths=None):
+        """Remove unused entries from the shared tag_cache to free memory.
+        
+        Args:
+            keep_paths: Optional set of paths to keep. If None, keeps all paths
+                       from all Database instances currently in use.
+        """
+        if keep_paths is not None:
+            # Remove entries not in keep_paths
+            keys_to_remove = [k for k in cls.tag_cache if k not in keep_paths]
+            for key in keys_to_remove:
+                del cls.tag_cache[key]
 
 
     #---------------------------------------------------------------------------
@@ -310,7 +334,7 @@ class Database:
 
         self.clear()
 
-        # Make the format strings
+        # Make the format strings (compiled once and cached)
         formats = {}
         self.multiple_fields = {}
         for field, (format, sort) in self.formats.items():
@@ -325,7 +349,7 @@ class Database:
                 )
             formats[field] = (format, sort)
 
-        # Standard formats
+        # Standard formats (compiled once and reused for all files)
         formats['date']        = titleformat.compile('$if2(%date%,0)')
         formats['discnumber']  = titleformat.compile('$if2(%discnumber%,0)')
         formats['tracknumber'] = titleformat.compile('$if2(%tracknumber%,0)')

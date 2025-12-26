@@ -1,11 +1,11 @@
 import functools
 import os
 import operator
+from functools import reduce, lru_cache
 
 from . import utils
 from . import statement
 from .tagbool import TagBool, TagTrue, TagFalse
-from functools import reduce
 
 def parse(string):
     """Parse a titleformat function.
@@ -237,20 +237,11 @@ class Function:
 #-------------------------------------------------------------------------------
 # Number functions
 #-------------------------------------------------------------------------------
-def _to_number(value):
-    if isinstance(value, (int, float)):
-        return value
-    if isinstance(value, (list, tuple)):
-        value = ''.join(str(v) for v in value)
-    assert isinstance(value, str)
-
-    def find_first_not_of(str, chars):
-        for i, c in enumerate(str):
-            if c not in chars:
-                return i
-
+@lru_cache(maxsize=512)
+def _parse_number_from_string(value_str):
+    """Parse a number from a string value. Cached for performance."""
     # Chop to the last non-numeric value
-    value = value.strip()
+    value = value_str.strip()
     if value.startswith('-') or value.startswith('+'):
         sign = value[0]
         value = value[1:]
@@ -270,6 +261,15 @@ def _to_number(value):
         except ValueError:
             pass
     return 0
+
+def _to_number(value):
+    if isinstance(value, (int, float)):
+        return value
+    if isinstance(value, (list, tuple)):
+        value = ''.join(str(v) for v in value)
+    assert isinstance(value, str)
+    
+    return _parse_number_from_string(value)
 
 def _to_int(value):
     return int(_to_number(value))

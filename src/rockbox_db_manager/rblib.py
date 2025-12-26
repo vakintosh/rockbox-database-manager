@@ -132,45 +132,55 @@ class Database(list):
 
         files = [ open(os.path.join(self.dir, f"database_{x}.tcd"), "rb+") \
                 for x in [0,1,2,3,4,5,6,7,8,"idx"] ]
-        mmaps = [ mmap.mmap(f.fileno(), 0) for f in files ]
-        idx = mmaps[9]
+        try:
+            mmaps = [ mmap.mmap(f.fileno(), 0) for f in files ]
+            try:
+                idx = mmaps[9]
 
-        self.magic = to_int(idx[0:4]) 
-        if self.magic != MAGIC:
-            raise ValueError("Incompatible DB version")
-        entry_count = to_int(idx[8:12])
-        self.serial = to_int(idx[12:16])
-        self.commitid = to_int(idx[16:20])
-        self.dirty = to_int(idx[20:24])
-        if self.dirty != 0:
-            print("WARNING: DB may be corrupt")
- 
-        for n in range(entry_count):
-            e = Entry()
-            e.index = n
-            offset = 24+n*(TAG_COUNT+1)*4
-            for n2 in range(9):
-                e[n2] = to_int(idx[offset:offset+4])
-                offset += 4
-            for n2 in range(9, TAG_COUNT):
-                e[TAGS[n2]] = to_int(idx[offset:offset+4])
-                offset += 4
-            flags = to_int(idx[offset:offset+4])
-            e.flags = [ FLAGS[flag] for flag in FLAGS if flags | flag == flags ]
+                self.magic = to_int(idx[0:4]) 
+                if self.magic != MAGIC:
+                    raise ValueError("Incompatible DB version")
+                entry_count = to_int(idx[8:12])
+                self.serial = to_int(idx[12:16])
+                self.commitid = to_int(idx[16:20])
+                self.dirty = to_int(idx[20:24])
+                if self.dirty != 0:
+                    print("WARNING: DB may be corrupt")
+     
+                for n in range(entry_count):
+                    e = Entry()
+                    e.index = n
+                    offset = 24+n*(TAG_COUNT+1)*4
+                    for n2 in range(9):
+                        e[n2] = to_int(idx[offset:offset+4])
+                        offset += 4
+                    for n2 in range(9, TAG_COUNT):
+                        e[TAGS[n2]] = to_int(idx[offset:offset+4])
+                        offset += 4
+                    flags = to_int(idx[offset:offset+4])
+                    e.flags = [ FLAGS[flag] for flag in FLAGS if flags | flag == flags ]
 
-            self.append(e)
+                    self.append(e)
 
-        for e in self:
-            if FLAGS[1] in e.flags:
-                continue # Don't restore data on deleted files
-            for n in range(9):
-                tname = TAGS[n]
-                offset = e[n]
-                length = to_int(mmaps[n][offset:offset+4])
-                raw_string = mmaps[n][offset+8:offset+8+length]
-                # Split by null byte and decode from bytes to string
-                e[tname] = raw_string.split(b'\x00')[0].decode('utf-8', errors='replace')
-                del e[n]
+                for e in self:
+                    if FLAGS[1] in e.flags:
+                        continue # Don't restore data on deleted files
+                    for n in range(9):
+                        tname = TAGS[n]
+                        offset = e[n]
+                        length = to_int(mmaps[n][offset:offset+4])
+                        raw_string = mmaps[n][offset+8:offset+8+length]
+                        # Split by null byte and decode from bytes to string
+                        e[tname] = raw_string.split(b'\x00')[0].decode('utf-8', errors='replace')
+                        del e[n]
+            finally:
+                # Close all mmaps to free memory
+                for m in mmaps:
+                    m.close()
+        finally:
+            # Close all files
+            for f in files:
+                f.close()
 
     # WARNING: if this gets interrupted the DB will be left in an unusuable state
     def write(self):
@@ -262,9 +272,12 @@ class Database(list):
         
         ids = mapping + TAGS[len(mapping):]
         for e in self:
-            s = b"".join([ to_str(e[x], 4) for x in ids ])
+            # Use bytearray for efficient string building
+            s = bytearray()
+            for x in ids:
+                s.extend(to_str(e[x], 4))
             raw_flags = e.get_raw_flags()
-            s += to_str(raw_flags, 4)
+            s.extend(to_str(raw_flags, 4))
             f.write(s)
             for i in mapping:
                 del e[i]

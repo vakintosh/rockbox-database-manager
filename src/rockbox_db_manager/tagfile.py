@@ -1,5 +1,6 @@
 import os
 import struct
+from operator import attrgetter
 
 from .defs import MAGIC, ENCODING
 
@@ -35,7 +36,7 @@ class TagFile:
         self.entries.append(entry)
 
     def sort(self):
-        self.entries.sort(key = lambda entry: entry.sort)
+        self.entries.sort(key=attrgetter('sort'))
 
     def to_file(self, f):
         self.offsets.clear()
