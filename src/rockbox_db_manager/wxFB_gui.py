@@ -14,9 +14,9 @@ import wx
 class Frame ( wx.Frame ):
 	
 	def __init__( self, parent ):
-		wx.Frame.__init__  ( self, parent, id = wx.ID_ANY, title = u"Rockbox Database Builder", pos = wx.DefaultPosition, size = wx.Size( 748,410 ), style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL )
+		wx.Frame.__init__  ( self, parent, id = wx.ID_ANY, title = "Rockbox Database Builder", pos = wx.DefaultPosition, size = wx.Size( 748,410 ), style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL )
 		
-		self.SetSizeHintsSz( wx.DefaultSize, wx.DefaultSize )
+		self.SetSizeHints( wx.DefaultSize, wx.DefaultSize )
 		
 		bSizer1 = wx.BoxSizer( wx.VERTICAL )
 		
@@ -29,22 +29,22 @@ class Frame ( wx.Frame ):
 		
 		bSizer4 = wx.BoxSizer( wx.HORIZONTAL )
 		
-		self.add_dir_button = wx.Button( self.mainpanel, wx.ID_ANY, u"Add Directory", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.add_dir_button = wx.Button( self.mainpanel, wx.ID_ANY, "Add Directory", wx.DefaultPosition, wx.DefaultSize, 0 )
 		bSizer4.Add( self.add_dir_button, 0, wx.ALL, 5 )
 		
-		self.m_button3 = wx.Button( self.mainpanel, wx.ID_ANY, u"Generate Database", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_button3 = wx.Button( self.mainpanel, wx.ID_ANY, "Generate Database", wx.DefaultPosition, wx.DefaultSize, 0 )
 		bSizer4.Add( self.m_button3, 0, wx.ALL, 5 )
 		
-		self.m_button4 = wx.Button( self.mainpanel, wx.ID_ANY, u"Write Database...", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_button4 = wx.Button( self.mainpanel, wx.ID_ANY, "Write Database...", wx.DefaultPosition, wx.DefaultSize, 0 )
 		bSizer4.Add( self.m_button4, 0, wx.ALL, 5 )
 		
-		self.m_button5 = wx.Button( self.mainpanel, wx.ID_ANY, u"Load Database...", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_button5 = wx.Button( self.mainpanel, wx.ID_ANY, "Load Database...", wx.DefaultPosition, wx.DefaultSize, 0 )
 		bSizer4.Add( self.m_button5, 0, wx.ALL, 5 )
 		
-		self.m_button6 = wx.Button( self.mainpanel, wx.ID_ANY, u"Save Tags...", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_button6 = wx.Button( self.mainpanel, wx.ID_ANY, "Save Tags...", wx.DefaultPosition, wx.DefaultSize, 0 )
 		bSizer4.Add( self.m_button6, 0, wx.ALL, 5 )
 		
-		self.m_button61 = wx.Button( self.mainpanel, wx.ID_ANY, u"Load Tags...", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_button61 = wx.Button( self.mainpanel, wx.ID_ANY, "Load Tags...", wx.DefaultPosition, wx.DefaultSize, 0 )
 		bSizer4.Add( self.m_button61, 0, wx.ALL, 5 )
 		
 		bSizer2.Add( bSizer4, 0, wx.EXPAND, 5 )
@@ -52,106 +52,106 @@ class Frame ( wx.Frame ):
 		self.mainpanel.SetSizer( bSizer2 )
 		self.mainpanel.Layout()
 		bSizer2.Fit( self.mainpanel )
-		self.notebook.AddPage( self.mainpanel, u"Manage", True )
+		self.notebook.AddPage( self.mainpanel, "Manage", True )
 		self.m_panel5 = wx.Panel( self.notebook, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, wx.TAB_TRAVERSAL )
-		fgSizer1 = wx.FlexGridSizer( 2, 3, 0, 0 )
+		fgSizer1 = wx.FlexGridSizer( 0, 3, 0, 0 )
 		fgSizer1.AddGrowableCol( 1 )
 		fgSizer1.AddGrowableCol( 2 )
 		fgSizer1.SetFlexibleDirection( wx.BOTH )
 		fgSizer1.SetNonFlexibleGrowMode( wx.FLEX_GROWMODE_ALL )
 		
-		self.m_staticText17 = wx.StaticText( self.m_panel5, wx.ID_ANY, u"Field", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_staticText17 = wx.StaticText( self.m_panel5, wx.ID_ANY, "Field", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_staticText17.Wrap( -1 )
-		self.m_staticText17.SetFont( wx.Font( wx.NORMAL_FONT.GetPointSize(), 70, 90, 92, False, wx.EmptyString ) );
+		self.m_staticText17.SetFont( wx.Font( wx.NORMAL_FONT.GetPointSize(), 70, 90, 92, False, wx.EmptyString ) )
 		
 		fgSizer1.Add( self.m_staticText17, 0, wx.ALL, 5 )
 		
-		self.m_staticText171 = wx.StaticText( self.m_panel5, wx.ID_ANY, u"Format", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_staticText171 = wx.StaticText( self.m_panel5, wx.ID_ANY, "Format", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_staticText171.Wrap( -1 )
-		self.m_staticText171.SetFont( wx.Font( wx.NORMAL_FONT.GetPointSize(), 70, 90, 92, False, wx.EmptyString ) );
+		self.m_staticText171.SetFont( wx.Font( wx.NORMAL_FONT.GetPointSize(), 70, 90, 92, False, wx.EmptyString ) )
 		
 		fgSizer1.Add( self.m_staticText171, 0, wx.ALL, 5 )
 		
-		self.m_staticText172 = wx.StaticText( self.m_panel5, wx.ID_ANY, u"Sort Format", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_staticText172 = wx.StaticText( self.m_panel5, wx.ID_ANY, "Sort Format", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_staticText172.Wrap( -1 )
-		self.m_staticText172.SetFont( wx.Font( wx.NORMAL_FONT.GetPointSize(), 70, 90, 92, False, wx.EmptyString ) );
+		self.m_staticText172.SetFont( wx.Font( wx.NORMAL_FONT.GetPointSize(), 70, 90, 92, False, wx.EmptyString ) )
 		
 		fgSizer1.Add( self.m_staticText172, 0, wx.ALL, 5 )
 		
-		self.m_staticText2 = wx.StaticText( self.m_panel5, wx.ID_ANY, u"Artist:", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_staticText2 = wx.StaticText( self.m_panel5, wx.ID_ANY, "Artist:", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_staticText2.Wrap( -1 )
 		fgSizer1.Add( self.m_staticText2, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, 5 )
 		
-		self.artist = wx.TextCtrl( self.m_panel5, wx.ID_ANY, u"%artist%", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.artist = wx.TextCtrl( self.m_panel5, wx.ID_ANY, "%artist%", wx.DefaultPosition, wx.DefaultSize, 0 )
 		fgSizer1.Add( self.artist, 1, wx.ALL|wx.EXPAND, 5 )
 		
-		self.artist_sort = wx.TextCtrl( self.m_panel5, wx.ID_ANY, u"$swapprefix(%artist%)", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.artist_sort = wx.TextCtrl( self.m_panel5, wx.ID_ANY, "$swapprefix(%artist%)", wx.DefaultPosition, wx.DefaultSize, 0 )
 		fgSizer1.Add( self.artist_sort, 1, wx.ALL|wx.EXPAND, 5 )
 		
-		self.m_staticText21 = wx.StaticText( self.m_panel5, wx.ID_ANY, u"Album Artist:", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_staticText21 = wx.StaticText( self.m_panel5, wx.ID_ANY, "Album Artist:", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_staticText21.Wrap( -1 )
 		fgSizer1.Add( self.m_staticText21, 0, wx.ALL, 5 )
 		
-		self.albumartist = wx.TextCtrl( self.m_panel5, wx.ID_ANY, u"%album artist%", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.albumartist = wx.TextCtrl( self.m_panel5, wx.ID_ANY, "%album artist%", wx.DefaultPosition, wx.DefaultSize, 0 )
 		fgSizer1.Add( self.albumartist, 1, wx.ALL|wx.EXPAND, 5 )
 		
-		self.albumartist_sort = wx.TextCtrl( self.m_panel5, wx.ID_ANY, u"$swapprefix(%album artist%)", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.albumartist_sort = wx.TextCtrl( self.m_panel5, wx.ID_ANY, "$swapprefix(%album artist%)", wx.DefaultPosition, wx.DefaultSize, 0 )
 		fgSizer1.Add( self.albumartist_sort, 1, wx.ALL|wx.EXPAND, 5 )
 		
-		self.m_staticText211 = wx.StaticText( self.m_panel5, wx.ID_ANY, u"Album:", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_staticText211 = wx.StaticText( self.m_panel5, wx.ID_ANY, "Album:", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_staticText211.Wrap( -1 )
 		fgSizer1.Add( self.m_staticText211, 0, wx.ALL, 5 )
 		
-		self.album = wx.TextCtrl( self.m_panel5, wx.ID_ANY, u"[(%date%) ]%album%", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.album = wx.TextCtrl( self.m_panel5, wx.ID_ANY, "[(%date%) ]%album%", wx.DefaultPosition, wx.DefaultSize, 0 )
 		fgSizer1.Add( self.album, 1, wx.ALL|wx.EXPAND, 5 )
 		
-		self.album_sort = wx.TextCtrl( self.m_panel5, wx.ID_ANY, u"[(%date%) ]%album%", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.album_sort = wx.TextCtrl( self.m_panel5, wx.ID_ANY, "[(%date%) ]%album%", wx.DefaultPosition, wx.DefaultSize, 0 )
 		fgSizer1.Add( self.album_sort, 1, wx.ALL|wx.EXPAND, 5 )
 		
-		self.m_staticText212 = wx.StaticText( self.m_panel5, wx.ID_ANY, u"Genre:", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_staticText212 = wx.StaticText( self.m_panel5, wx.ID_ANY, "Genre:", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_staticText212.Wrap( -1 )
 		fgSizer1.Add( self.m_staticText212, 0, wx.ALL, 5 )
 		
-		self.genre = wx.TextCtrl( self.m_panel5, wx.ID_ANY, u"%genre%", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.genre = wx.TextCtrl( self.m_panel5, wx.ID_ANY, "%genre%", wx.DefaultPosition, wx.DefaultSize, 0 )
 		fgSizer1.Add( self.genre, 1, wx.ALL|wx.EXPAND, 5 )
 		
-		self.genre_sort = wx.TextCtrl( self.m_panel5, wx.ID_ANY, u"%genre%", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.genre_sort = wx.TextCtrl( self.m_panel5, wx.ID_ANY, "%genre%", wx.DefaultPosition, wx.DefaultSize, 0 )
 		fgSizer1.Add( self.genre_sort, 1, wx.ALL|wx.EXPAND, 5 )
 		
-		self.m_staticText213 = wx.StaticText( self.m_panel5, wx.ID_ANY, u"Comment:", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_staticText213 = wx.StaticText( self.m_panel5, wx.ID_ANY, "Comment:", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_staticText213.Wrap( -1 )
 		fgSizer1.Add( self.m_staticText213, 0, wx.ALL, 5 )
 		
-		self.comment = wx.TextCtrl( self.m_panel5, wx.ID_ANY, u"%comment%", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.comment = wx.TextCtrl( self.m_panel5, wx.ID_ANY, "%comment%", wx.DefaultPosition, wx.DefaultSize, 0 )
 		fgSizer1.Add( self.comment, 1, wx.ALL|wx.EXPAND, 5 )
 		
-		self.comment_sort = wx.TextCtrl( self.m_panel5, wx.ID_ANY, u"%comment%", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.comment_sort = wx.TextCtrl( self.m_panel5, wx.ID_ANY, "%comment%", wx.DefaultPosition, wx.DefaultSize, 0 )
 		fgSizer1.Add( self.comment_sort, 1, wx.ALL|wx.EXPAND, 5 )
 		
-		self.m_staticText214 = wx.StaticText( self.m_panel5, wx.ID_ANY, u"Composer:", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_staticText214 = wx.StaticText( self.m_panel5, wx.ID_ANY, "Composer:", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_staticText214.Wrap( -1 )
 		fgSizer1.Add( self.m_staticText214, 0, wx.ALL, 5 )
 		
-		self.composer = wx.TextCtrl( self.m_panel5, wx.ID_ANY, u"%composer%", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.composer = wx.TextCtrl( self.m_panel5, wx.ID_ANY, "%composer%", wx.DefaultPosition, wx.DefaultSize, 0 )
 		fgSizer1.Add( self.composer, 1, wx.ALL|wx.EXPAND, 5 )
 		
-		self.composer_sort = wx.TextCtrl( self.m_panel5, wx.ID_ANY, u"%composer%", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.composer_sort = wx.TextCtrl( self.m_panel5, wx.ID_ANY, "%composer%", wx.DefaultPosition, wx.DefaultSize, 0 )
 		fgSizer1.Add( self.composer_sort, 1, wx.ALL|wx.EXPAND, 5 )
 		
-		self.m_staticText215 = wx.StaticText( self.m_panel5, wx.ID_ANY, u"Grouping:", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_staticText215 = wx.StaticText( self.m_panel5, wx.ID_ANY, "Grouping:", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_staticText215.Wrap( -1 )
 		fgSizer1.Add( self.m_staticText215, 0, wx.ALL, 5 )
 		
-		self.grouping = wx.TextCtrl( self.m_panel5, wx.ID_ANY, u"%title%", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.grouping = wx.TextCtrl( self.m_panel5, wx.ID_ANY, "%title%", wx.DefaultPosition, wx.DefaultSize, 0 )
 		fgSizer1.Add( self.grouping, 1, wx.ALL|wx.EXPAND, 5 )
 		
-		self.grouping_sort = wx.TextCtrl( self.m_panel5, wx.ID_ANY, u"%title%", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.grouping_sort = wx.TextCtrl( self.m_panel5, wx.ID_ANY, "%title%", wx.DefaultPosition, wx.DefaultSize, 0 )
 		fgSizer1.Add( self.grouping_sort, 1, wx.ALL|wx.EXPAND, 5 )
 		
 		self.m_panel5.SetSizer( fgSizer1 )
 		self.m_panel5.Layout()
 		fgSizer1.Fit( self.m_panel5 )
-		self.notebook.AddPage( self.m_panel5, u"Formats", False )
+		self.notebook.AddPage( self.m_panel5, "Formats", False )
 		
 		bSizer5.Add( self.notebook, 1, wx.EXPAND |wx.ALL, 5 )
 		
@@ -162,7 +162,7 @@ class Frame ( wx.Frame ):
 		
 		self.SetSizer( bSizer1 )
 		self.Layout()
-		self.status = self.CreateStatusBar( 2, wx.ST_SIZEGRIP, wx.ID_ANY )
+		self.status = self.CreateStatusBar( 2, wx.STB_SIZEGRIP, wx.ID_ANY )
 		
 		# Connect Events
 		self.add_dir_button.Bind( wx.EVT_BUTTON, self.OnAddDirectory )
@@ -173,13 +173,9 @@ class Frame ( wx.Frame ):
 		self.m_button61.Bind( wx.EVT_BUTTON, self.OnLoadTags )
 	
 	def __del__( self ):
-		# Disconnect Events
-		self.add_dir_button.Unbind( wx.EVT_BUTTON, handler = self.OnAddDirectory )
-		self.m_button3.Unbind( wx.EVT_BUTTON, handler = self.OnGenerateDatabase )
-		self.m_button4.Unbind( wx.EVT_BUTTON, handler = self.OnWriteDatabase )
-		self.m_button5.Unbind( wx.EVT_BUTTON, handler = self.OnReadDatabase )
-		self.m_button6.Unbind( wx.EVT_BUTTON, handler = self.OnSaveTags )
-		self.m_button61.Unbind( wx.EVT_BUTTON, handler = self.OnLoadTags )
+		pass
+		# Disconnect Events - not needed in wxPython Phoenix, causes errors
+		# Events are automatically disconnected when widgets are destroyed
 	
 	
 	# Virtual event handlers, overide them in your derived class
@@ -213,7 +209,7 @@ class FieldPane ( wx.Panel ):
 		
 		bSizer9 = wx.BoxSizer( wx.VERTICAL )
 		
-		choiceChoices = [ u"<None>", u"Album Artist", u"Artist", u"Album", u"Genre", u"Title", u"Path", u"Composer", u"Comment", u"Grouping" ]
+		choiceChoices = [ "<None>", "Album Artist", "Artist", "Album", "Genre", "Title", "Path", "Composer", "Comment", "Grouping" ]
 		self.choice = wx.Choice( self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, choiceChoices, 0 )
 		self.choice.SetSelection( 0 )
 		bSizer9.Add( self.choice, 0, wx.ALL|wx.EXPAND, 5 )
@@ -230,9 +226,9 @@ class FieldPane ( wx.Panel ):
 		self.listbox.Bind( wx.EVT_LISTBOX, self.OnListSelect )
 	
 	def __del__( self ):
-		# Disconnect Events
-		self.choice.Unbind( wx.EVT_CHOICE, handler = self.OnFieldChange )
-		self.listbox.Unbind( wx.EVT_LISTBOX, handler = self.OnListSelect )
+		pass
+		# Disconnect Events - not needed in wxPython Phoenix, causes errors
+		# Events are automatically disconnected when widgets are destroyed
 	
 	
 	# Virtual event handlers, overide them in your derived class

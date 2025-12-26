@@ -26,10 +26,10 @@ def TagBool(value, rep=None):
     that evaluates to the specified bool value.
     """
     if rep is None:
-        if value == True:
-            rep = u'1'
+        if value:
+            rep = '1'
         else:
-            rep = u''
+            rep = ''
 
     class BoolClass(rep.__class__):
         """
@@ -37,7 +37,7 @@ def TagBool(value, rep=None):
         unicode methods should be transparent.  The class evaluates to a
         boolean value independent of its unicode value.
         """
-        def __nonzero__(self):
+        def __bool__(self):
             return value
         def __repr__(self):
             return self.__class__.__name__ + '(' + repr(rep) + ')'
@@ -47,14 +47,14 @@ def TagBool(value, rep=None):
     BoolClass.__name__ = 'TagTrue' if value else 'TagFalse'
     return BoolClass(rep)
 
-def TagTrue(rep=u'1'):
+def TagTrue(rep='1'):
     """
     A factory function that returns an object that evaluates to True
     and is converted to a string as the <rep> parameter.
     """
     return TagBool(True,rep)
 
-def TagFalse(rep=u''):
+def TagFalse(rep=''):
     """
     A factory function that returns an object that evaluates to False
     and is converted to a string as the <rep> parameter.

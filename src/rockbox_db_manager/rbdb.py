@@ -1,4 +1,7 @@
-import sys, os, mmap, time
+import sys
+import os
+import mmap
+import time
 
 mapping = [0,1,2,3,4,5,6,7,8]
 
@@ -48,7 +51,8 @@ def to_int(s):
     total = 0
     for c in s[::-1]: 
         total = total*256
-        total += ord(c)
+        # In Python 3, iterating over bytes yields integers directly
+        total += c if isinstance(c, int) else ord(c)
     return total
 
 def mtime_to_unix(mtime):
@@ -60,7 +64,7 @@ def mtime_to_unix(mtime):
     hour = (tim >> 11) & 0x1F
     minute = (tim >> 5) & 0x3F
     second = tim & 0x1F
-    print (year, month, day, hour, minute, second)
+    print((year, month, day, hour, minute, second))
     t = time.mktime((year, month, day, hour, minute, second, -1, -1, -1))
     return t
 
@@ -79,7 +83,7 @@ def unix_to_mtime(unix):
     return total
 
 def reprnonstr(s):
-    if type(s) == str:
+    if isinstance(s, str):
         return s
     else:
         return repr(s)
@@ -211,19 +215,19 @@ if __name__ == '__main__':
 
     try:
         num = str(mapping[int(sys.argv[1])])
-    except:
+    except (IndexError, ValueError):
         num = "idx"
 
-    filename = "database_%s.tcd"%num
+    filename = f"database_{num}.tcd"
 
-    print "Reading DB ", filename
-    print "File size: ", os.path.getsize(filename)
+    print("Reading DB ", filename)
+    print("File size: ", os.path.getsize(filename))
     
     if num == "idx":
         res = parse_indexfile(filename)
     else:
         res = parse_tagfile(filename)
     
-    print res
+    print(res)
 
 

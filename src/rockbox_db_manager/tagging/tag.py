@@ -1,8 +1,11 @@
 # All the files we can read
+import os
+from warnings import warn
+import mutagen
 from mutagen.asf import ASF
 from mutagen.apev2 import APEv2File as APE
 from mutagen.flac import FLAC
-from mutagen.easyid3 import EasyID3FileType as ID3
+from mutagen.easyid3 import EasyID3FileType as ID3, EasyID3
 from mutagen.mp3 import EasyMP3 as MP3
 from mutagen.oggvorbis import OggVorbis as Vorbis
 from mutagen.wavpack import WavPack
@@ -19,10 +22,7 @@ def read(filename, force_string = False):
         return None
 File = read
 
-from warnings import warn
-
-import os
-class Tag(object):
+class Tag:
     """
     Encapsulates a mutagen tag object so that property access is simillar across
     formats. (what a chore!)
@@ -124,7 +124,7 @@ class Tag(object):
     def conv_string(cls, value):
         if not isinstance(value, (list, tuple)):
             value = [value]
-        return u', '.join(unicode(v) for v in value)
+        return ', '.join(str(v) for v in value)
 
     @classmethod
     def conv_number(cls, value):
@@ -177,21 +177,21 @@ class Tag(object):
     def RegisterKey(cls, name, type='default',
                     getter=None, setter=None, deleter=None,
                     convert=None):
-        if not type in cls.field_map:
+        if type not in cls.field_map:
             cls.field_map[type] = {}
 
         # Figure out the conversion function
         if type == 'default':
             if not convert:
-                conter = cls.conv_default
+                pass
         else:
             if not convert:
                 try:
                     convert = cls.field_map['default'][name]['convert']
                 except KeyError:
                     warning_text = \
-                        'No conversion is defined for field "%s".  ' % name + \
-                        'Default conversion will be used for %s' % repr(type)
+                        f'No conversion is defined for field "{name}".  ' + \
+                        f'Default conversion will be used for {repr(type)}'
                     warn(warning_text)
                     convert = cls.conv_default
 
@@ -245,9 +245,9 @@ class Tag(object):
                 continue
             try:
                 value = self[key]
-                print key.ljust(offset), type(value), value
+                print(key.ljust(offset), type(value), value)
             except KeyError:
-                print key, '<NONE>'
+                print(key, '<NONE>')
 
     #---------------------------------------------------------------------------
     # Pickling functions
@@ -350,7 +350,7 @@ for key, value in {
         'channels': 'channels',
         'length':   'length',
         'samplerate': 'sample_rate',
-    }.iteritems():
+    }.items():
     Tag.RegisterInfoKey(key, value, convert = Tag.conv_number_list)
 
 for name, conv in {
@@ -371,7 +371,7 @@ for name, conv in {
         'replaygain_album_peak': Tag.conv_number_list,
         'replaygain_track_gain': Tag.conv_number_list,
         'replaygain_track_peak': Tag.conv_number_list,
-    }.iteritems():
+    }.items():
     Tag.RegisterBasicKey(name, name, convert = conv)
 
 
@@ -385,8 +385,8 @@ for tag_type, tag_dict in {
             'replaygain_track_gain': 'title_gain',
             'replaygain_track_peak': 'title_peak',
         },
-    }.iteritems():
-        for key, value in tag_dict.iteritems():
+    }.items():
+        for key, value in tag_dict.items():
             Tag.RegisterInfoKey(key, value, tag_type)
 
 
@@ -432,8 +432,8 @@ for tag_type, tag_dict in {
         WavPack: {
             'date': 'Year',
         },
-    }.iteritems():
-    for key, value in tag_dict.iteritems():
+    }.items():
+    for key, value in tag_dict.items():
         Tag.RegisterBasicKey(key, value, tag_type)
 
 
@@ -455,15 +455,15 @@ def split_string(key, sep, index):
     # Index needs to be either 0 or 2 because we're using str.partition
     index = index if index == 0 else 2
     def getter(tags):
-        val = unicode(tags[key]).partition(sep)[index]
+        val = str(tags[key]).partition(sep)[index]
         if val:
             return val
         else:
             raise KeyError
     def setter(tags, value):
-        value = unicode(value)
+        value = str(value)
         try:
-            vals = list(unicode(tags[key]).partition(sep))
+            vals = list(str(tags[key]).partition(sep))
             vals[index] = value
             tags[key] = vals[0] + sep + vals[2]
         except KeyError:
@@ -474,7 +474,7 @@ def split_string(key, sep, index):
         if index == 0:
             del tags[key]
         else:
-            tags[key] = unicode(tags[key]).partition(sep)[0]
+            tags[key] = str(tags[key]).partition(sep)[0]
 
     return getter, setter, deleter
 
@@ -483,8 +483,8 @@ for tag_type, tag_dict in {
             'disc':  'disk',
             'track': 'trkn',
         }
-    }.iteritems():
-    for key, value in tag_dict.iteritems():
+    }.items():
+    for key, value in tag_dict.items():
         Tag.RegisterKey(key + 'number',      tag_type, *from_tuple(value, 0))
         Tag.RegisterKey('total' + key + 's', tag_type, *from_tuple(value, 1))
 
@@ -501,8 +501,8 @@ for tag_type, tag_dict in {
             'disc':  'Disc',
             'track':  'Track'
         }
-    }.iteritems():
-    for key, value in tag_dict.iteritems():
+    }.items():
+    for key, value in tag_dict.items():
         Tag.RegisterKey(key + 'number',      tag_type, *split_string(value , '/', 0))
         Tag.RegisterKey('total' + key + 's', tag_type, *split_string(value , '/', 1))
 
@@ -514,15 +514,15 @@ for tag_type, tag_dict in {
 def default_custom_field(name):
     return name
 def MP4_custom_field(name):
-    return u'----:com.apple.iTunes:' + name.upper()
+    return '----:com.apple.iTunes:' + name.upper()
 def ASF_custom_field(name):
-    return u'foobar2000/' + name.upper()
+    return 'foobar2000/' + name.upper()
 
 for tag_type, name_func in {
         'default': default_custom_field,
         MP4:       MP4_custom_field,
         ASF:       ASF_custom_field,
-    }.iteritems():
+    }.items():
     Tag.RegisterUserKey(name_func, tag_type)
 
 
@@ -530,8 +530,6 @@ for tag_type, name_func in {
 #-------------------------------------------------------------------------------
 # MP3 / ID3 additions
 #-------------------------------------------------------------------------------
-import mutagen
-from mutagen.easyid3 import EasyID3
 
 def RegisterAdaptableKey(name, key_finder, key_setter):
     """
@@ -566,7 +564,7 @@ def new_txxx_field(id3, name, value):
     enc = 0
     # Store 8859-1 if we can, per MusicBrainz spec.
     for v in value:
-        if max(v) > u'\x7f':
+        if max(v) > '\x7f':
             enc = 3
     id3.add(mutagen.id3.TXXX(encoding=enc, text=value, desc=name))
 
@@ -606,7 +604,7 @@ RegisterAdaptableKey('comment', comment_finder, comment_setter)
 # Rename keys as foobar uses them
 for key, frame in {
         'band': 'TPE2'
-    }.iteritems():
+    }.items():
     EasyID3.RegisterTextKey(key, frame)
 
 
@@ -635,7 +633,7 @@ def RegisterNumberPair(number_name, total_name, frameid, txxxdesc):
     def number_setter(id3, key, number):
         if isinstance(number, (list, tuple)):
             number = number[0]
-        number = unicode(number)
+        number = str(number)
 
         # Get total and make the number/total string
         try:
@@ -657,7 +655,7 @@ def RegisterNumberPair(number_name, total_name, frameid, txxxdesc):
     def total_setter(id3, key, total):
         if isinstance(total, (list, tuple)):
             total = total[0]
-        total = unicode(total)
+        total = str(total)
 
         try:
             number = number_getter(id3, key)[0]
@@ -665,7 +663,7 @@ def RegisterNumberPair(number_name, total_name, frameid, txxxdesc):
             assert len(frame.text) == 1
             frame.text = [number + '/' + total]
         except KeyError:
-            new_txxx_frame(id3, key, total)
+            new_txxx_field(id3, txxxdesc, [total])
 
     def number_deleter(id3, key):
         try:
@@ -682,7 +680,7 @@ def RegisterNumberPair(number_name, total_name, frameid, txxxdesc):
         except KeyError:
             del(id3[txxxframe])
         else:
-            number_setter(ide, key, number)
+            number_setter(id3, key, number)
 
 
     EasyID3.RegisterKey(number_name, number_getter, number_setter, number_deleter)

@@ -1,5 +1,5 @@
-import statement
-from tagbool import TagFalse
+from . import statement
+from .tagbool import TagFalse
 
 def parse(format):
     """Parse a conditional titleformat statement.
@@ -26,7 +26,7 @@ class Conditional(statement.Statement):
             return ret if ret else TagFalse()
 
     def __repr__(self):
-        return 'Conditional(%s)' % ', '.join(repr(part) for part in self)
+        return 'Conditional({})'.format(', '.join(repr(part) for part in self))
 
     def to_string(self):
         return '[' + statement.Statement.to_string(self) + ']'

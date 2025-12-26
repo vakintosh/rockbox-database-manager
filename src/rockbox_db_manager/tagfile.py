@@ -1,11 +1,10 @@
-from __future__ import with_statement
-import math
 import os
 import struct
+from operator import attrgetter
 
-from defs import MAGIC, ENCODING
+from .defs import MAGIC, ENCODING
 
-class TagFile(object):
+class TagFile:
     def __init__(self, entries=None):
         self.magic = MAGIC
         self.entrydict = {}
@@ -37,7 +36,7 @@ class TagFile(object):
         self.entries.append(entry)
 
     def sort(self):
-        self.entries.sort(key = lambda entry: entry.sort)
+        self.entries.sort(key=attrgetter('sort'))
 
     def to_file(self, f):
         self.offsets.clear()
@@ -52,20 +51,57 @@ class TagFile(object):
 
     @staticmethod
     def from_file(f, is_path=False):
-        """Return a TagFile given a file object."""
+        """Return a TagFile given a file object.
+        
+        Raises:
+            struct.error: If file format is invalid
+            ValueError: If file is corrupted or incomplete
+            EOFError: If file ends unexpectedly
+        """
         tf = TagFile()
-        magic, size, entry_count = struct.unpack('III', f.read(4 * 3))
-        for i in xrange(entry_count):
-            offset = f.tell()
-            entry = TagEntry.from_file(f, is_path)
-            tf.offsets[offset] = entry
-            tf.append(entry)
-        assert tf.size == size
-        return tf
+        try:
+            header = f.read(4 * 3)
+            if len(header) < 12:
+                raise EOFError(f"Incomplete file header: expected 12 bytes, got {len(header)}")
+            
+            magic, size, entry_count = struct.unpack('III', header)
+            
+            if magic != MAGIC:
+                raise ValueError(f"Invalid magic number: expected {MAGIC}, got {magic}. File may be corrupted.")
+            
+            if entry_count < 0 or entry_count > 1000000:  # Sanity check
+                raise ValueError(f"Invalid entry count: {entry_count}. File may be corrupted.")
+            
+            for i in range(entry_count):
+                offset = f.tell()
+                try:
+                    entry = TagEntry.from_file(f, is_path)
+                    tf.offsets[offset] = entry
+                    tf.append(entry)
+                except (struct.error, ValueError) as e:
+                    raise ValueError(f"Failed to read entry {i+1}/{entry_count} at offset {offset}: {e}")
+            
+            if tf.size != size:
+                raise ValueError(f"Size mismatch: header says {size} bytes, but got {tf.size} bytes. File may be corrupted.")
+            
+            return tf
+        except struct.error as e:
+            raise ValueError(f"Invalid file format: {e}")
+        except Exception as e:
+            if isinstance(e, (ValueError, EOFError)):
+                raise
+            raise ValueError(f"Unexpected error reading file: {e}")
 
     @staticmethod
     def read(filename, is_path=None):
-        """Return a TagFile given a file name."""
+        """Return a TagFile given a file name.
+        
+        Raises:
+            FileNotFoundError: If file doesn't exist
+            ValueError: If file is corrupted or has invalid format
+            EOFError: If file ends unexpectedly
+            PermissionError: If file cannot be read
+        """
         if is_path is None:
             base = os.path.basename(filename)
             if base.startswith('database_'):
@@ -73,11 +109,21 @@ class TagFile(object):
             else:
                 is_path = False
 
-        with open(filename, 'rb') as f:
-            return TagFile.from_file(f, is_path)
+        try:
+            with open(filename, 'rb') as f:
+                return TagFile.from_file(f, is_path)
+        except FileNotFoundError:
+            raise FileNotFoundError(f"Tag file not found: {filename}")
+        except PermissionError:
+            raise PermissionError(f"Permission denied reading tag file: {filename}")
+        except (ValueError, EOFError) as e:
+            # Re-raise with filename context
+            raise type(e)(f"Error reading {filename}: {e}")
+        except Exception as e:
+            raise ValueError(f"Unexpected error reading {filename}: {e}")
 
 
-class TagEntry(object):
+class TagEntry:
     def __init__(self, data='<Untagged>', sort=None, is_path=False):
         self.data = data
         self.sort = sort
@@ -90,7 +136,7 @@ class TagEntry(object):
         self.index_entries.append(entry)
 
     def __get_data(self):
-        return unicode(self.__data, ENCODING)
+        return str(self.__data, ENCODING)
     def __set_data(self, data):
         self.__data = data.encode(ENCODING)
     data = property(__get_data, __set_data)
@@ -100,9 +146,9 @@ class TagEntry(object):
         return self.data
 
     def __get_raw_data(self):
-        return (self.__data + '\x00').ljust(self.length, 'X')
+        return (self.__data + b'\x00').ljust(self.length, b'X')
     def __set_raw_data(self, raw_data):
-        self.__data = raw_data.partition('\x00')[0]
+        self.__data = raw_data.partition(b'\x00')[0]
     raw_data = property(__get_raw_data, __set_raw_data)
 
     def __get_index(self):
@@ -135,7 +181,8 @@ class TagEntry(object):
         if self.is_path:
             return len(self.__data) + 1
         else:
-            return int(math.ceil( (len(self.__data) + 1) / 8.) * 8)
+            data_len = len(self.__data) + 1
+            return ((data_len + 7) // 8) * 8
 
     @property
     def size(self):
@@ -145,7 +192,7 @@ class TagEntry(object):
         return self.data
 
     def __repr__(self):
-        return 'TagEntry(%r)' % self.data
+        return f'TagEntry({self.data!r})'
 
     def to_file(self, f):
         self.offset = f.tell()

@@ -1,10 +1,11 @@
 import functools
 import os
 import operator
+from functools import reduce, lru_cache
 
-import utils
-import statement
-from tagbool import TagBool, TagTrue, TagFalse
+from . import utils
+from . import statement
+from .tagbool import TagBool, TagTrue, TagFalse
 
 def parse(string):
     """Parse a titleformat function.
@@ -42,7 +43,7 @@ def TEST_ARG(x):
     return x
 
 
-class Function(object):
+class Function:
 
     """A titleformat object representing a function."""
 
@@ -100,12 +101,12 @@ class Function(object):
 
         # Add arbitrary attributes that describe the number of required
         # arguments.
-        nArgs = original_func.func_code.co_argcount
-        if original_func.func_defaults is not None:
-            nDefaults = len(original_func.func_defaults)
+        nArgs = original_func.__code__.co_argcount
+        if original_func.__defaults__ is not None:
+            nDefaults = len(original_func.__defaults__)
         else:
             nDefaults = 0
-        flags = original_func.func_code.co_flags
+        flags = original_func.__code__.co_flags
         has_varargs = (flags & 0x04) or (flags & 0x08)
 
         func.min_args = nArgs - nDefaults
@@ -156,7 +157,7 @@ class Function(object):
                 else:
                     bool_value = bool(args[bool_test])
 
-                ret.append( TagBool(bool_value, unicode(value) ) )
+                ret.append( TagBool(bool_value, str(value) ) )
             return ret
 
         cls.__register_function(string_function, func)
@@ -172,7 +173,7 @@ class Function(object):
             args = (arg.format(tags) for arg in args)
             for args in utils.iter_arg_list(*args):
                 args = [_to_int(arg) for arg in args]
-                ret.append( TagFalse(unicode(func(*args)) ) )
+                ret.append( TagFalse(str(func(*args)) ) )
             return ret
 
         cls.__register_function(number_function, func)
@@ -228,28 +229,19 @@ class Function(object):
             f.max_args -= 1
 
     def __repr__(self):
-        return 'Function(%s, %s)' % (self.name, repr(self.args))
+        return f'Function({self.name}, {repr(self.args)})'
 
     def to_string(self):
-        return "$%s(%s)" % (self.name, ','.join(a.to_string() for a in self.args))
+        return "${}({})".format(self.name, ','.join(a.to_string() for a in self.args))
 
 #-------------------------------------------------------------------------------
 # Number functions
 #-------------------------------------------------------------------------------
-def _to_number(value):
-    if isinstance(value, (int, float)):
-        return value
-    if isinstance(value, (list, tuple)):
-        value = u''.join(unicode(v) for v in value)
-    assert isinstance(value, basestring)
-
-    def find_first_not_of(str, chars):
-        for i, c in enumerate(str):
-            if c not in chars:
-                return i
-
+@lru_cache(maxsize=512)
+def _parse_number_from_string(value_str):
+    """Parse a number from a string value. Cached for performance."""
     # Chop to the last non-numeric value
-    value = value.strip()
+    value = value_str.strip()
     if value.startswith('-') or value.startswith('+'):
         sign = value[0]
         value = value[1:]
@@ -270,22 +262,31 @@ def _to_number(value):
             pass
     return 0
 
+def _to_number(value):
+    if isinstance(value, (int, float)):
+        return value
+    if isinstance(value, (list, tuple)):
+        value = ''.join(str(v) for v in value)
+    assert isinstance(value, str)
+    
+    return _parse_number_from_string(value)
+
 def _to_int(value):
     return int(_to_number(value))
 def _to_float(value):
     return float(_to_number(value))
 
 def add(*args):
-    print 'adding',args
+    print('adding',args)
     return reduce(operator.add, args)
 def sub(*args):
     return reduce(operator.sub, args)
 def mul(*args):
     return reduce(operator.mul, args)
 def div(*args):
-    return reduce(operator.div, (a for a in args if a != 0))
+    return reduce(operator.floordiv, (a for a in args if a != 0))
 def mod(*args):
-    return reduce(operator.div, (a for a in args if a != 0))
+    return reduce(operator.mod, (a for a in args if a != 0))
 def muldiv(a,b,c):
     return int(round(float(a) * b / c))
 def min_(*args):
@@ -406,17 +407,17 @@ def swapprefix(str, *args):
     return str
 
 def char(num):
-    return unichr(_to_int(num))
+    return chr(_to_int(num))
 def crlf():
-    return u'\n'
+    return '\n'
 def tab(num=1):
-    return u'\t' * _to_int(num)
+    return '\t' * _to_int(num)
 
 
 def directory_path(path):
     return os.path.dirname(path)
 def directory(path, up = 1):
-    for iterations in xrange(_to_int(up)):
+    for iterations in range(_to_int(up)):
         path = directory_path(path)
     return os.path.basename(path)
 def ext(path):
@@ -450,7 +451,7 @@ def meta(tags, field, index = None):
     try:
         values = tags.get_string(field)
         if index is None:
-            return TagTrue(u', '.join(values))
+            return TagTrue(', '.join(values))
         else:
             return TagTrue(values[_to_int(index)])
     except KeyError:
@@ -459,7 +460,7 @@ def meta(tags, field, index = None):
 def meta_num(tags, field):
     try:
         return TagTrue(str(len(tags.get_string(field))))
-    except:
+    except (KeyError, AttributeError):
         return TagFalse(str(0))
 
 def meta_sep(tags, field, sep = ', ', end_sep = None):
