@@ -90,6 +90,7 @@ See [tests/README.md](tests/README.md) for more details on running and writing t
 ```
 rockbox-db-manager/
 ├── src/rockbox_db_manager/    # Main application package
+│   ├── gui.py                  # GUI application
 │   ├── database.py             # Database operations
 │   ├── indexfile.py            # Index file handling
 │   ├── tagfile.py              # Tag file handling
@@ -101,7 +102,6 @@ rockbox-db-manager/
 │   ├── test_indexfile.py
 │   ├── test_tagfile.py
 │   └── test_utils.py
-├── gui.pyw                     # GUI entry point
 ├── pyproject.toml              # Project configuration
 └── README.md                   # This file
 ```
