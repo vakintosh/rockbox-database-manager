@@ -6,4 +6,4 @@ Supports reading audio file tags and generating database files for Rockbox firmw
 
 __version__ = "0.1.0"
 
-__all__ = ["database", "defs", "indexfile", "rbdb", "rblib", "tagfile", "utils"]
+__all__ = ["database", "defs", "indexfile", "rbdb", "rblib", "tagfile", "utils", "progress"]

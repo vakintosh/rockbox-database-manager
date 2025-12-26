@@ -55,9 +55,20 @@ class IndexFile:
         for entry in self.entries:
             entry.to_file(f)
 
-    def write(self, filename):
-        with open(filename, 'wb') as f:
-            self.to_file(f)
+    def write(self, filename, buffer_size=None):
+        """Write index file to disk with optional buffering for better I/O performance.
+        
+        Args:
+            filename: Path to write the index file
+            buffer_size: Optional buffer size in bytes. If None, uses system default.
+                        Recommended: 8192 (8KB) for optimal performance.
+        """
+        if buffer_size is not None:
+            with open(filename, 'wb', buffering=buffer_size) as f:
+                self.to_file(f)
+        else:
+            with open(filename, 'wb') as f:
+                self.to_file(f)
 
 
     @staticmethod
