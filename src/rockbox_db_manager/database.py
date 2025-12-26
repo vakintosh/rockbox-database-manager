@@ -361,11 +361,19 @@ class Database:
             for field in EMBEDDED_TAGS:
                 try:
                     formatted_value = str(formats[field].format(tags))
-                    entry[field] = int(formatted_value)
-                except (KeyError, ValueError):
+                    # Handle TagTrue/TagFalse which may not convert properly
+                    # Strip any whitespace that might interfere
+                    formatted_value = formatted_value.strip()
+                    # Try to convert to int, default to 0 if it fails
+                    if formatted_value and formatted_value not in ('True', 'False', '<Untagged>'):
+                        entry[field] = int(formatted_value)
+                    else:
+                        entry[field] = 0
+                except (KeyError, ValueError, AttributeError):
                     # KeyError: field not found in formats
                     # ValueError: cannot convert formatted string to int
-                    pass
+                    # AttributeError: formatted value has unexpected type
+                    entry[field] = 0
 
             multiple_tags = {}
             for field, blank_tag in self.multiple_fields.items():

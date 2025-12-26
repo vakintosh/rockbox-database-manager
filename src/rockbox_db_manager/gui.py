@@ -3,11 +3,110 @@ import wx.lib.newevent
 import functools
 import threading
 import sys
+import os
+import traceback
 from typing import Callable, Optional, Any
 
 from .database import Database
 from .defs import FORMATTED_TAGS
 from . import wxFB_gui
+from .config import Config
+
+
+#-------------------------------------------------------------------------------
+# Error Handling Utilities
+#-------------------------------------------------------------------------------
+def show_error_dialog(parent: Optional[wx.Window], title: str, message: str, 
+                      details: Optional[str] = None) -> None:
+    """Show a user-friendly error dialog.
+    
+    Args:
+        parent: Parent window (can be None)
+        title: Dialog title
+        message: Main error message
+        details: Optional detailed error information (e.g., stack trace)
+    """
+    if details:
+        full_message = f"{message}\n\nDetails:\n{details}"
+    else:
+        full_message = message
+    
+    dlg = wx.MessageDialog(parent, full_message, title, 
+                          wx.OK | wx.ICON_ERROR)
+    dlg.ShowModal()
+    dlg.Destroy()
+
+
+def show_warning_dialog(parent: Optional[wx.Window], title: str, message: str) -> None:
+    """Show a warning dialog.
+    
+    Args:
+        parent: Parent window (can be None)
+        title: Dialog title
+        message: Warning message
+    """
+    dlg = wx.MessageDialog(parent, message, title, 
+                          wx.OK | wx.ICON_WARNING)
+    dlg.ShowModal()
+    dlg.Destroy()
+
+
+def validate_path(path: str, must_exist: bool = True) -> tuple[bool, str]:
+    """Validate a file or directory path.
+    
+    Args:
+        path: Path to validate
+        must_exist: Whether the path must already exist
+        
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if not path or not path.strip():
+        return False, "Path cannot be empty"
+    
+    path = path.strip()
+    
+    if must_exist and not os.path.exists(path):
+        return False, f"Path does not exist: {path}"
+    
+    # Check if parent directory exists for output paths
+    if not must_exist:
+        parent = os.path.dirname(path)
+        if parent and not os.path.exists(parent):
+            return False, f"Parent directory does not exist: {parent}"
+    
+    return True, ""
+
+
+def validate_format_string(format_str: str) -> tuple[bool, str]:
+    """Validate a titleformat string.
+    
+    Args:
+        format_str: Format string to validate
+        
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if not format_str or not format_str.strip():
+        return False, "Format string cannot be empty"
+    
+    # Basic validation - check for balanced brackets
+    stack = []
+    for i, char in enumerate(format_str):
+        if char in '[(':
+            stack.append((char, i))
+        elif char in '])':
+            if not stack:
+                return False, f"Unmatched closing bracket at position {i}"
+            opening, _ = stack.pop()
+            if (char == ']' and opening != '[') or (char == ')' and opening != '('):
+                return False, f"Mismatched brackets at position {i}"
+    
+    if stack:
+        char, pos = stack[0]
+        return False, f"Unclosed bracket '{char}' at position {pos}"
+    
+    return True, ""
 
 
 #-------------------------------------------------------------------------------
@@ -22,19 +121,22 @@ class ThreadEvent:
     """Helper class for posting thread events."""
     
     @staticmethod
-    def post_start(obj):
-        evt = ThreadStartEvent()
-        wx.PostEvent(obj.GetEventHandler(), evt)
+    def post_start(obj, handler, info):
+        evt = ThreadStartEvent(info=info, _handler=handler)
+        wx.PostEvent(obj, evt)  # Post directly to frame
+        wx.WakeUpIdle()
 
     @staticmethod
-    def post_end(obj):
-        evt = ThreadEndEvent()
-        wx.PostEvent(obj.GetEventHandler(), evt)
+    def post_end(obj, handler, info):
+        evt = ThreadEndEvent(info=info, _handler=handler)
+        wx.PostEvent(obj, evt)  # Post directly to frame
+        wx.WakeUpIdle()
 
     @staticmethod
-    def post_callback(obj, message, *args, **kwargs):
-        evt = ThreadCallbackEvent(message=message, args=args, **kwargs)
-        wx.PostEvent(obj.GetEventHandler(), evt)
+    def post_callback(obj, handler, info, message, *args, **kwargs):
+        evt = ThreadCallbackEvent(message=message, info=info, _handler=handler, args=args, **kwargs)
+        wx.PostEvent(obj, evt)  # Post directly to frame
+        wx.WakeUpIdle()
 
 
 #-------------------------------------------------------------------------------
@@ -77,6 +179,12 @@ class RapidlyUpdatingText(wx.Window):
         self.text = text
         self.SetMinSize(self.GetTextExtent(text))
         self.Refresh()
+        self.Update()
+        # Also refresh parent to ensure changes are visible
+        parent = self.GetParent()
+        if parent:
+            parent.Refresh()
+            parent.Update()
 
     def GetValue(self):
         return self.text
@@ -107,7 +215,7 @@ class Info(object):
                 if hours:
                     s = '%d:' % hours
                 s += '%02d:%02d' % (minutes, seconds)
-                self.time = s
+                self.time_value = s  # Use time_value property, not time
 
         self.timer = MyTimer()
         self.timer.Start(1000)
@@ -137,6 +245,13 @@ class Info(object):
 class MyFrame(wxFB_gui.Frame):
     def __init__(self, parent):
         wxFB_gui.Frame.__init__(self, parent)
+        self.Bind(EVT_THREAD_START, self._on_thread_start)
+        self.Bind(EVT_THREAD_CALLBACK, self._on_thread_message)
+        self.Bind(EVT_THREAD_END, self._on_thread_end)
+        
+        # Initialize configuration
+        self.config = Config()
+        
         self.panes = FieldPanePanel(self.notebook)
         self.notebook.AddPage(self.panes, 'View')
         self.status.SetStatusWidths([200,-1])
@@ -147,20 +262,298 @@ class MyFrame(wxFB_gui.Frame):
         self.mainpanel.Layout()
 
         self.database = Database()
-        self.message_callback = functools.partial(
-            ThreadEvent.post_callback, self
-        )
 
         self.thread_info = [] # List of currently running info panels
 
+        # Restore window size and position from config
+        width, height = self.config.get_window_size()
+        x, y = self.config.get_window_position()
+        self.SetSize(width, height)
+        if x != -1 and y != -1:
+            self.SetPosition((x, y))
+        
+        # Load saved format strings
+        self._load_format_strings()
+        
+        # Add tooltips to format string controls
+        self._add_format_tooltips()
+        
+        # Add right-click menu for templates
+        self._add_template_menus()
+        
         self.Show()
 
         self.Bind(wx.EVT_CLOSE, self.OnClose)
+    
+    def _on_thread_start(self, evt):
+        if hasattr(evt, '_handler'):
+            # Extract data from event to avoid using deleted event object
+            handler = evt._handler
+            info = evt.info if hasattr(evt, 'info') else None
+            
+            class EventData:
+                pass
+            event_data = EventData()
+            event_data.info = info
+            
+            handler(event_data)
+        wx.WakeUpIdle()
+
+    def _on_thread_message(self, evt):
+        if hasattr(evt, '_handler'):
+            # Extract data from event to avoid using deleted event object
+            handler = evt._handler
+            info = evt.info if hasattr(evt, 'info') else None
+            message = evt.message if hasattr(evt, 'message') else None
+            
+            class EventData:
+                pass
+            event_data = EventData()
+            event_data.info = info
+            event_data.message = message
+            
+            handler(event_data)
+        wx.WakeUpIdle()
+
+    def _on_thread_end(self, evt):
+        if hasattr(evt, '_handler'):
+            # Extract data from event before CallAfter, as event object gets deleted
+            handler = evt._handler
+            info = evt.info if hasattr(evt, 'info') else None
+            
+            # Create a simple container for the info
+            class EventData:
+                pass
+            event_data = EventData()
+            event_data.info = info
+            
+            # Wrap the handler in CallAfter to ensure the UI thread 
+            # is definitely ready to process the layout change.
+            wx.CallAfter(handler, event_data)
+        
+        if hasattr(evt, 'info') and evt.info in self.thread_info:
+            self.thread_info.remove(evt.info)
+        
+        wx.WakeUpIdle()
+
+    def _load_format_strings(self) -> None:
+        """Load saved format strings into the GUI."""
+        for field in FORMATTED_TAGS:
+            # Get the control name (e.g., "artist" from "artist")
+            control_name = field.replace(' ', '')
+            
+            # Get the controls
+            format_ctrl = getattr(self, control_name, None)
+            sort_ctrl = getattr(self, control_name + '_sort', None)
+            
+            if format_ctrl:
+                # Get saved format string, or use current value if not saved
+                saved_format = self.config.get_format(field)
+                if saved_format is not None:
+                    format_ctrl.SetValue(saved_format)
+            
+            if sort_ctrl:
+                # Get saved sort format, or use current value if not saved
+                saved_sort = self.config.get_sort_format(field)
+                if saved_sort is not None:
+                    sort_ctrl.SetValue(saved_sort)
+    
+    def _save_format_strings(self) -> None:
+        """Save current format strings to config."""
+        for field in FORMATTED_TAGS:
+            # Get the control name
+            control_name = field.replace(' ', '')
+            
+            # Get the controls
+            format_ctrl = getattr(self, control_name, None)
+            sort_ctrl = getattr(self, control_name + '_sort', None)
+            
+            if format_ctrl:
+                # Save the format string
+                format_str = format_ctrl.GetValue()
+                self.config.set_format(field, format_str)
+            
+            if sort_ctrl:
+                # Save the sort format
+                sort_str = sort_ctrl.GetValue()
+                self.config.set_sort_format(field, sort_str)
+    
+    def _add_format_tooltips(self) -> None:
+        """Add helpful tooltips to format string controls."""
+        
+        # Common tooltip text explaining format syntax
+        format_help = (
+            "Titleformat Syntax:\n"
+            "  %field% - Insert tag value (e.g., %artist%, %album%)\n"
+            "  [text] - Optional text (shown only if all tags inside exist)\n"
+            "  $function(args) - Function call\n\n"
+            "Common Functions:\n"
+            "  $swapprefix(text) - Move 'The/A/An' to end\n"
+            "  $upper(text) - Convert to uppercase\n"
+            "  $lower(text) - Convert to lowercase\n"
+            "  $caps(text) - Capitalize first letter\n"
+            "  $replace(text,old,new) - Replace text\n\n"
+            "Examples:\n"
+            "  %artist% → 'The Beatles'\n"
+            "  $swapprefix(%artist%) → 'Beatles, The'\n"
+            "  [(%date%) ]%album% → '(1967) Sgt Pepper' or 'Album Name'\n"
+            "  %album artist% → Album artist tag value"
+        )
+        
+        sort_help = (
+            "Sort Format:\n"
+            "Defines how this field is sorted in lists.\n"
+            "Usually same as display format, but often uses\n"
+            "$swapprefix() to ignore 'The', 'A', 'An' prefixes.\n\n"
+            "Example: $swapprefix(%artist%)\n"
+            "  'The Beatles' sorts as 'Beatles, The'"
+        )
+        
+        # Add tooltips to all format controls
+        for field in FORMATTED_TAGS:
+            control_name = field.replace(' ', '')
+            
+            format_ctrl = getattr(self, control_name, None)
+            if format_ctrl:
+                format_ctrl.SetToolTip(format_help)
+            
+            sort_ctrl = getattr(self, control_name + '_sort', None)
+            if sort_ctrl:
+                sort_ctrl.SetToolTip(sort_help)
+    
+    def get_format_templates(self) -> dict:
+        """Return a dictionary of common format string templates."""
+        return {
+            'Simple': {
+                'artist': '%artist%',
+                'album': '%album%',
+                'genre': '%genre%',
+                'composer': '%composer%',
+                'comment': '%comment%',
+                'albumartist': '%album artist%',
+                'grouping': '%grouping%',
+            },
+            'With Sorting': {
+                'artist': '%artist%',
+                'artist_sort': '$swapprefix(%artist%)',
+                'album': '%album%',
+                'album_sort': '%album%',
+                'genre': '%genre%',
+                'genre_sort': '%genre%',
+            },
+            'Year + Album': {
+                'album': '[(%date%) ]%album%',
+                'album_sort': '[(%date%) ]%album%',
+            },
+            'Classical': {
+                'artist': '%composer%',
+                'artist_sort': '$swapprefix(%composer%)',
+                'album': '%album%',
+                'grouping': '%composer% - %title%',
+            },
+            'Compilation Friendly': {
+                'artist': '$if(%album artist%,%album artist%,%artist%)',
+                'artist_sort': '$if(%album artist%,$swapprefix(%album artist%),$swapprefix(%artist%))',
+                'albumartist': '%album artist%',
+                'albumartist_sort': '$swapprefix(%album artist%)',
+            },
+        }
+    
+    def _add_template_menus(self) -> None:
+        """Add right-click context menus with templates to format controls."""
+        
+        # Get all format controls
+        format_controls = []
+        for field in FORMATTED_TAGS:
+            control_name = field.replace(' ', '')
+            format_ctrl = getattr(self, control_name, None)
+            sort_ctrl = getattr(self, control_name + '_sort', None)
+            
+            if format_ctrl:
+                format_controls.append((format_ctrl, field, False))
+            if sort_ctrl:
+                format_controls.append((sort_ctrl, field, True))
+        
+        # Bind right-click event to show template menu
+        for ctrl, field, is_sort in format_controls:
+            ctrl.Bind(wx.EVT_CONTEXT_MENU, 
+                     lambda evt, c=ctrl, f=field, s=is_sort: self._show_template_menu(evt, c, f, s))
+    
+    def _show_template_menu(self, evt, ctrl, field, is_sort):
+        """Show context menu with format templates."""
+        menu = wx.Menu()
+        
+        # Add "Copy" and "Paste" options
+        copy_item = menu.Append(wx.ID_ANY, "Copy")
+        paste_item = menu.Append(wx.ID_ANY, "Paste")
+        menu.AppendSeparator()
+        
+        # Bind copy/paste
+        self.Bind(wx.EVT_MENU, lambda e: self._copy_format(ctrl), copy_item)
+        self.Bind(wx.EVT_MENU, lambda e: self._paste_format(ctrl), paste_item)
+        
+        # Add template submenu
+        template_menu = wx.Menu()
+        templates = self.get_format_templates()
+        
+        for template_name, template_formats in templates.items():
+            # Check if this template has a value for this field
+            control_name = field.replace(' ', '')
+            key = control_name + '_sort' if is_sort else control_name
+            
+            if key in template_formats:
+                item = template_menu.Append(wx.ID_ANY, template_name)
+                template_value = template_formats[key]
+                self.Bind(wx.EVT_MENU, 
+                         lambda e, v=template_value, c=ctrl: self._apply_template(c, v), 
+                         item)
+        
+        if template_menu.GetMenuItemCount() > 0:
+            menu.AppendSubMenu(template_menu, "Apply Template")
+        
+        # Show the menu
+        self.PopupMenu(menu)
+        menu.Destroy()
+    
+    def _copy_format(self, ctrl):
+        """Copy format string to clipboard."""
+        if wx.TheClipboard.Open():
+            wx.TheClipboard.SetData(wx.TextDataObject(ctrl.GetValue()))
+            wx.TheClipboard.Close()
+    
+    def _paste_format(self, ctrl):
+        """Paste format string from clipboard."""
+        if wx.TheClipboard.Open():
+            data = wx.TextDataObject()
+            if wx.TheClipboard.GetData(data):
+                ctrl.SetValue(data.GetText())
+            wx.TheClipboard.Close()
+    
+    def _apply_template(self, ctrl, template_value):
+        """Apply a template value to a control."""
+        ctrl.SetValue(template_value)
+
 
     def OnLoadTags(self, evt):
-        filename = wx.FileSelector('Load Tags', default_extension='.pkl')
+        default_dir = self.config.get_last_tags_file()
+        if default_dir:
+            default_dir = os.path.dirname(default_dir)
+        
+        filename = wx.FileSelector('Load Tags', 
+                                  default_path=default_dir or '',
+                                  default_extension='.pkl')
         if not filename:
             return
+        
+        # Validate file path
+        is_valid, error_msg = validate_path(filename, must_exist=True)
+        if not is_valid:
+            show_error_dialog(self, "Invalid File Path", error_msg)
+            return
+        
+        # Save to config
+        self.config.set_last_tags_file(filename)
+        self.config.save()
 
         def OnStart(evt):
             evt.info.timer.Start()
@@ -174,11 +567,14 @@ class MyFrame(wxFB_gui.Frame):
         def OnEnd(evt):
             evt.info.timer.Stop()
             evt.info.status = 'Done'
+            # Force the InfoPanel to re-layout and repaint immediately
+            evt.info.parent.Layout()
+            evt.info.parent.Refresh()
 
         self.start_thread(
             self.database.load_tags,
                 filename,
-                callback = self.message_callback,
+                callback = None,
             _start=OnStart, _message=OnMessage, _end=OnEnd,
             _info=self.infopanel.MakeRow('Loading saved tags')
         )
@@ -200,19 +596,34 @@ class MyFrame(wxFB_gui.Frame):
         def OnEnd(evt):
             evt.info.timer.Stop()
             evt.info.status = 'Done'
+            # Force the InfoPanel to re-layout and repaint immediately
+            evt.info.parent.Layout()
+            evt.info.parent.Refresh()
 
         self.start_thread(
             self.database.save_tags,
                 filename,
-                callback = self.message_callback,
+                callback = None,
             _start=OnStart, _message=OnMessage, _end=OnEnd,
             _info = self.infopanel.MakeRow('Saving tags')
         )
 
     def OnAddDirectory(self, evt):
-        dir = wx.DirSelector('Music Directory')
+        default_dir = self.config.get_last_music_dir()
+        dir = wx.DirSelector('Music Directory',
+                            default_path=default_dir or '')
         if not dir:
             return
+        
+        # Validate directory path
+        is_valid, error_msg = validate_path(dir, must_exist=True)
+        if not is_valid:
+            show_error_dialog(self, "Invalid Directory Path", error_msg)
+            return
+        
+        # Save to config
+        self.config.set_last_music_dir(dir)
+        self.config.save()
 
         def OnStart(evt):
             evt.info.timer.Start()
@@ -225,46 +636,100 @@ class MyFrame(wxFB_gui.Frame):
         def OnEnd(evt):
             evt.info.timer.Stop()
             evt.info.status = 'Done'
+            # Force the InfoPanel to re-layout and repaint immediately
+            evt.info.parent.Layout()
+            evt.info.parent.Refresh()
 
         self.start_thread(
             self.database.add_dir,
                 dir,
                 dircallback = None,
-                filecallback = self.message_callback,
-                estimatecallback = self.message_callback,
+                filecallback = None,
+                estimatecallback = None,
             _start=OnStart, _message=OnMessage, _end=OnEnd,
             _info = self.infopanel.MakeRow('Adding %s' % dir)
         )
 
     def OnGenerateDatabase(self, evt):
-        # Make the formats
+        # Collect format strings from GUI (fast operation)
+        format_strings = {}
         for field in FORMATTED_TAGS:
-            format = self.__dict__[field.replace(' ','')].GetValue()
-            sort   = self.__dict__[field.replace(' ','')+'_sort'].GetValue()
-            self.database.set_format(field, format, sort)
+            format_str = self.__dict__[field.replace(' ','')].GetValue()
+            sort_str = self.__dict__[field.replace(' ','')+'_sort'].GetValue()
+            format_strings[field] = (format_str, sort_str)
+
+        # Create info panel and show immediate status
+        info = self.infopanel.MakeRow('Generating database')
+        info.status = 'Starting...'
+        info.timer.Start()
+        
+        # Force GUI to update immediately
+        wx.Yield()
 
         def OnStart(evt):
-            evt.info.timer.Start()
-            evt.info.SetRange(len(self.database.paths))
+            evt.info.status = 'Compiling format strings...'
         def OnMessage(evt):
-            evt.info.status = evt.message
-            evt.info.gauge += 1
+            if isinstance(evt.message, str) and evt.message.startswith('READY:'):
+                # Format strings compiled, now set the range for file processing
+                count = int(evt.message.split(':')[1])
+                evt.info.SetRange(count)
+                evt.info.gauge = 0
+                evt.info.status = 'Processing files...'
+            else:
+                evt.info.status = evt.message
+                evt.info.gauge += 1
         def OnEnd(evt):
             evt.info.timer.Stop()
             evt.info.status = 'Done'
+            # Force the InfoPanel to re-layout and repaint immediately
+            evt.info.parent.Layout()
+            evt.info.parent.Refresh()
             DatabaseEvent.post_updated(self.panes, self.database)
 
+        def worker_generate_database(format_strings, callback=None):
+            # Compile format strings in worker thread (may be slow)
+            for field, (format_str, sort_str) in format_strings.items():
+                self.database.set_format(field, format_str, sort_str)
+            
+            # Signal that we're ready to process files
+            if callback:
+                callback(f'READY:{len(self.database.paths)}')
+            
+            # Now generate the database
+            self.database.generate_database(callback=callback)
+
         self.start_thread(
-            self.database.generate_database,
-                callback = self.message_callback,
+            worker_generate_database,
+                format_strings,
+                callback = None,
             _start=OnStart, _message=OnMessage, _end=OnEnd,
-            _info = self.infopanel.MakeRow('Generating database')
+            _info = info
         )
 
     def OnWriteDatabase(self, evt):
-        write_dir = wx.DirSelector('Database Output Directory')
+        default_dir = self.config.get_last_output_dir()
+        write_dir = wx.DirSelector('Database Output Directory',
+                                  default_path=default_dir or '')
         if not write_dir:
             return
+        
+        # Validate directory path
+        is_valid, error_msg = validate_path(write_dir, must_exist=False)
+        if not is_valid:
+            show_error_dialog(self, "Invalid Directory Path", error_msg)
+            return
+        
+        # Create directory if it doesn't exist
+        try:
+            os.makedirs(write_dir, exist_ok=True)
+        except OSError as e:
+            show_error_dialog(self, "Directory Creation Failed", 
+                            f"Could not create directory: {e}")
+            return
+        
+        # Save to config
+        self.config.set_last_output_dir(write_dir)
+        self.config.save()
 
         def OnStart(evt):
             evt.info.timer.Start()
@@ -277,20 +742,35 @@ class MyFrame(wxFB_gui.Frame):
         def OnEnd(evt):
             evt.info.timer.Stop()
             evt.info.status = 'Done'
+            # Force the InfoPanel to re-layout and repaint immediately
+            evt.info.parent.Layout()
+            evt.info.parent.Refresh()
             DatabaseEvent.post_updated(self.panes, self.database)
 
         self.start_thread(
             self.database.write,
                 write_dir,
-                callback = self.message_callback,
+                callback = None,
             _start=OnStart, _message=OnMessage, _end=OnEnd,
             _info = self.infopanel.MakeRow('Writing database')
         )
 
     def OnReadDatabase(self, evt):
-        read_dir = wx.DirSelector('Database Directory')
+        default_dir = self.config.get_last_output_dir()
+        read_dir = wx.DirSelector('Database Directory',
+                                 default_path=default_dir or '')
         if not read_dir:
             return
+        
+        # Validate directory path
+        is_valid, error_msg = validate_path(read_dir, must_exist=True)
+        if not is_valid:
+            show_error_dialog(self, "Invalid Directory Path", error_msg)
+            return
+        
+        # Save to config
+        self.config.set_last_output_dir(read_dir)
+        self.config.save()
 
         def OnStart(evt):
             evt.info.timer.Start()
@@ -303,6 +783,9 @@ class MyFrame(wxFB_gui.Frame):
         def OnEnd(evt):
             evt.info.timer.Stop()
             evt.info.status = 'Done'
+            # Force the InfoPanel to re-layout and repaint immediately
+            evt.info.parent.Layout()
+            evt.info.parent.Refresh()
             DatabaseEvent.post_updated(self.panes, self.database)
 
         def read_database(directory, callback=None):
@@ -311,7 +794,7 @@ class MyFrame(wxFB_gui.Frame):
         self.start_thread(
             read_database,
                 read_dir,
-                callback = self.message_callback,
+                callback = None,
             _start=OnStart, _message=OnMessage, _end=OnEnd,
             _info = self.infopanel.MakeRow('Reading database')
         )
@@ -334,9 +817,9 @@ class MyFrame(wxFB_gui.Frame):
         """
         # Extract the event handler functions from kwargs, and remove them,
         # so they aren't passed to func
-        end: Callable = kwargs.pop('_end', lambda evt: None)
-        start: Optional[Callable] = kwargs.pop('_start', None)
-        message: Optional[Callable] = kwargs.pop('_message', None)
+        end_handler: Callable = kwargs.pop('_end', lambda evt: None)
+        start_handler: Optional[Callable] = kwargs.pop('_start', None)
+        msg_handler: Optional[Callable] = kwargs.pop('_message', None)
         info = kwargs.pop('_info', None)
         
         if info is not None:
@@ -345,58 +828,69 @@ class MyFrame(wxFB_gui.Frame):
         # Worker function that will be called in the thread
         def worker() -> None:
             try:
-                if start:
-                    def start_func(evt: Any) -> None:
-                        evt.info = info
-                        start(evt)
-                        self.Unbind(EVT_THREAD_START, None)
-                    self.Bind(EVT_THREAD_START, start_func)
-                    ThreadEvent.post_start(self)
+                # Post start event if handler provided
+                if start_handler:
+                    ThreadEvent.post_start(self, start_handler, info)
 
-                if message:
-                    def message_func(evt: Any) -> None:
-                        evt.info = info
-                        message(evt)
-                    self.Bind(EVT_THREAD_CALLBACK, message_func)
+                # Replace the callback with one that knows its handler
+                if msg_handler:
+                    thread_callback = functools.partial(
+                        ThreadEvent.post_callback, self, msg_handler, info
+                    )
+                    # Update all callback types in kwargs if present
+                    if 'callback' in kwargs:
+                        kwargs['callback'] = thread_callback
+                    if 'dircallback' in kwargs:
+                        kwargs['dircallback'] = thread_callback
+                    if 'filecallback' in kwargs:
+                        kwargs['filecallback'] = thread_callback
+                    if 'estimatecallback' in kwargs:
+                        kwargs['estimatecallback'] = thread_callback
 
                 # Execute the actual function
                 func(*args, **kwargs)
 
-                def end_func(evt: Any) -> None:
-                    evt.info = info
-                    end(evt)
-                    self.Unbind(EVT_THREAD_END, None)
-                    if message:
-                        self.Unbind(EVT_THREAD_CALLBACK, None)
-                    if info in self.thread_info:
-                        self.thread_info.remove(info)
-                self.Bind(EVT_THREAD_END, end_func)
-                ThreadEvent.post_end(self)
+                # Post end event
+                ThreadEvent.post_end(self, end_handler, info)
 
             except SystemExit:
                 # Allow clean thread termination
                 pass
             except Exception as e:
-                # Log any unexpected errors
+                # Catch any unexpected errors
+                error_details = traceback.format_exc()
                 print(f"Thread error: {e}", file=sys.stderr)
+                print(error_details, file=sys.stderr)
+                # Show error dialog to user
+                wx.CallAfter(show_error_dialog, self, 
+                           "Thread Error",
+                           str(e),
+                           error_details)
 
         # Create and start the daemon thread
         thread = threading.Thread(target=worker, daemon=True)
         thread.start()
 
 
-    def OnClose(self, evt):
-        # I haven't bothered to make a nice way to stop the threads, so just
-        # make sure that the events they send aren't caught by the frame
-        # after it is destroyed.
 
-        # Unbind all of the events we recieve so we aren't trying to send
-        # events to a dead window.
+    def OnClose(self, evt):
+        # Save window size and position
+        if not self.IsMaximized() and not self.IsIconized():
+            size = self.GetSize()
+            pos = self.GetPosition()
+            self.config.set_window_size(size.width, size.height)
+            self.config.set_window_position(pos.x, pos.y)
+        
+        # Save format strings
+        self._save_format_strings()
+        
+        # Save configuration
+        self.config.save()
+        
+        # Stop all running threads
         for info in self.thread_info:
             info.timer.Stop()
-        self.Unbind(EVT_THREAD_START, None)
-        self.Unbind(EVT_THREAD_CALLBACK, None)
-        self.Unbind(EVT_THREAD_END, None)
+        
         evt.Skip()
 
 #-------------------------------------------------------------------------------

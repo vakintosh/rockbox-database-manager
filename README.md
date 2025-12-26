@@ -78,7 +78,7 @@ The original Rockbox Database Manager (version dated 12/10/09) was written for P
 - wxPython GUI for database management
 - Full documentation available in [README.txt](README.txt) and [README_src.txt](README_src.txt)
 
-### This Version (2024-2025)
+### This Version (2025)
 
 This repository represents a complete migration and modernization effort:
 - **Python 3.11+** compatibility (from Python 2.5/2.6)
