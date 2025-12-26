@@ -264,6 +264,10 @@ class MyFrame(wxFB_gui.Frame):
         self.notebook.AddPage(self.panes, "View")
         self.status.SetStatusWidths([200, -1])
 
+        # Hide Save Tags and Load Tags buttons
+        self.m_button6.Hide()   # Save Tags button
+        self.m_button61.Hide()  # Load Tags button
+
         # Insert the info panel into the sizer
         self.infopanel = InfoPanel(self.mainpanel)
         self.mainpanel.GetSizer().Insert(0, self.infopanel, 1, wx.ALL | wx.EXPAND, 5)
