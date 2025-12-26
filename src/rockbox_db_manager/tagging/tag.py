@@ -266,11 +266,16 @@ class Tag:
             # be pickled, so we need to remove them.  MP3 files have a few.
             tags_copy = copy.copy(self.tags)
             for func in ['load', 'save', 'delete']:
-                # First we have to get rid of the reference that tags_copy is
-                # holding.
-                setattr(tags_copy.tags, func, None)
-                # Now we can delete it safely
-                delattr(tags_copy.tags, func)
+                try:
+                    # First we have to get rid of the reference that tags_copy is
+                    # holding.
+                    setattr(tags_copy.tags, func, None)
+                    # Now we can delete it safely
+                    delattr(tags_copy.tags, func)
+                except (AttributeError, TypeError):
+                    # In newer versions of mutagen, these might be properties
+                    # that can't be deleted. Just skip them.
+                    pass
             return tags_copy, self.force_string
 
         elif isinstance(self.tags, APE):
@@ -316,8 +321,15 @@ class Tag:
 
         elif isinstance(self.tags, MP3):
             for func in ['load', 'save', 'delete']:
-                setattr(self.tags.tags, func,
-                        getattr(self.tags.tags._EasyID3__id3, func))
+                try:
+                    # Try to restore the methods if they were removed
+                    if not hasattr(self.tags.tags, func) or getattr(self.tags.tags, func) is None:
+                        setattr(self.tags.tags, func,
+                                getattr(self.tags.tags._EasyID3__id3, func))
+                except (AttributeError, TypeError):
+                    # In newer versions of mutagen, these might be properties
+                    # that don't need restoration. Just skip them.
+                    pass
 
 #-------------------------------------------------------------------------------
 # Tag field setup

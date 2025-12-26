@@ -289,6 +289,9 @@ class MyFrame(wxFB_gui.Frame):
         # Add right-click menu for templates
         self._add_template_menus()
 
+        # Create menu bar with Window menu
+        self._create_menu_bar()
+
         self.Show()
 
         self.Bind(wx.EVT_CLOSE, self.OnClose)
@@ -493,6 +496,22 @@ class MyFrame(wxFB_gui.Frame):
                     evt, c, f, s
                 ),
             )
+
+    def _create_menu_bar(self) -> None:
+        """Create menu bar with Window menu and minimize functionality."""
+        menubar = wx.MenuBar()
+        
+        # Window menu
+        window_menu = wx.Menu()
+        minimize_item = window_menu.Append(
+            wx.ID_ANY,
+            "Minimize\tCtrl+M" if wx.Platform != '__WXMAC__' else "Minimize\tCmd+M",
+            "Minimize window"
+        )
+        self.Bind(wx.EVT_MENU, lambda evt: self.Iconize(True), minimize_item)
+        
+        menubar.Append(window_menu, "&Window")
+        self.SetMenuBar(menubar)
 
     def _show_template_menu(self, evt, ctrl, field, is_sort):
         """Show context menu with format templates."""
