@@ -460,7 +460,7 @@ def meta(tags, field, index = None):
 def meta_num(tags, field):
     try:
         return TagTrue(str(len(tags.get_string(field))))
-    except:
+    except (KeyError, AttributeError):
         return TagFalse(str(0))
 
 def meta_sep(tags, field, sep = ', ', end_sep = None):

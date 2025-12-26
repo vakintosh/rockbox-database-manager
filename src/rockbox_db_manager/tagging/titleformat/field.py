@@ -40,7 +40,7 @@ class Field:
         self.__name = name
         try:
             self.function = self.func_map[name]
-        except:
+        except KeyError:
             def user_field(tags):
                 return tags.get_string(name)
             self.function = user_field

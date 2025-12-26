@@ -1,7 +1,15 @@
 import time
 
-def mtime_to_fat(mtime):
-    """Convert from the mtime returned by os.stat to rockbox's mtime."""
+
+def mtime_to_fat(mtime: float) -> int:
+    """Convert from the mtime returned by os.stat to rockbox's mtime.
+    
+    Args:
+        mtime: Modification time from os.stat()
+        
+    Returns:
+        FAT format timestamp as integer
+    """
     year, month, day, hour, minute, second = time.localtime(mtime)[:-3]
     year = year - 1980
     date = 0
@@ -15,8 +23,16 @@ def mtime_to_fat(mtime):
     total = (date << 16) | tim
     return total
 
-def fat_to_mtime(fat):
-    """Convert from rockbox's mtime to the mtime returned by os.stat."""
+
+def fat_to_mtime(fat: int) -> float:
+    """Convert from rockbox's mtime to the mtime returned by os.stat.
+    
+    Args:
+        fat: FAT format timestamp
+        
+    Returns:
+        Unix timestamp as float
+    """
     date = fat >> 16
     tim = fat & 0x0000FFFF
     year = ((date >> 9) & 0x7F) + 1980

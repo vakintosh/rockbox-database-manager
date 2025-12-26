@@ -1,6 +1,7 @@
 import os
 import pickle
 from itertools import product
+from typing import Optional, Callable, List, Any
 try:
     from . import tagging
     from .tagging import titleformat
@@ -82,13 +83,20 @@ class Database:
         except OSError:
             pass
 
-    def save_tags(self, path, callback=None):
-        """Save tags in self.paths to a pickled file."""
+    def save_tags(self, path: str, callback: Optional[Callable] = None) -> None:
+        """Save tags in self.paths to a pickled file.
+        
+        Args:
+            path: Path to save the pickled tags file
+            callback: Optional callback function for progress updates
+        """
         with open(path, 'wb') as f:
-            if callback: callback(len(self.paths))
+            if callback:
+                callback(len(self.paths))
             pickle.dump(len(self.paths), f, 2)
             for path in sorted(self.paths):
-                if callback: callback(path)
+                if callback:
+                    callback(path)
                 pickle.dump((path, self.tag_cache[path]), f, 2)
 
 
@@ -176,44 +184,69 @@ class Database:
                 self.tag_cache[lowerpath] = ((size, mtime), tags)
         self.paths.add(lowerpath)
 
-    def add_file(self, file, callback=myprint):
-        """Add a file and rewrite the tag_cache."""
+    def add_file(self, file: str, callback: Callable = myprint) -> None:
+        """Add a file and rewrite the tag_cache.
+        
+        Args:
+            file: Path to the file to add
+            callback: Callback function for progress updates
+        """
         if tagging is None:
             warn_no_tags()
             return
 
         path = str(file)
-        if callback: callback(path)
+        if callback:
+            callback(path)
         self.__add_file(file)
 
-    def add_files(self, files, callback=myprint):
-        """Add a list of files.  Rewrite the tag_cache at the end."""
+    def add_files(self, files: List[str], callback: Callable = myprint) -> None:
+        """Add a list of files.  Rewrite the tag_cache at the end.
+        
+        Args:
+            files: List of file paths to add
+            callback: Callback function for progress updates
+        """
         if tagging is None:
             warn_no_tags()
             return
 
         for file in files:
             file = str(file)
-            if callback: callback(file)
+            if callback:
+                callback(file)
             self.__add_file(file)
 
-    def add_dir(self, path, recursive=True,
-                dircallback=myprint, filecallback=None, estimatecallback=None):
-        """Add a directory (recursively by default)."""
+    def add_dir(self, path: str, recursive: bool = True,
+                dircallback: Optional[Callable] = myprint, 
+                filecallback: Optional[Callable] = None, 
+                estimatecallback: Optional[Callable] = None) -> None:
+        """Add a directory (recursively by default).
+        
+        Args:
+            path: Directory path to scan
+            recursive: Whether to scan recursively (default: True)
+            dircallback: Callback function called for each directory
+            filecallback: Callback function called for each file
+            estimatecallback: Callback function for progress estimation
+        """
 
         if tagging is None:
             warn_no_tags()
             return
 
-        def blank(*args, **kwargs):
+        def blank(*args: Any, **kwargs: Any) -> None:
             pass
-        if not dircallback: dircallback = blank
-        if not filecallback: filecallback = blank
+        
+        if not dircallback:
+            dircallback = blank
+        if not filecallback:
+            filecallback = blank
+            
         if estimatecallback:
             finishedFiles = 0
             totalTopLevelDirs = 0
             finishedTopLevelDirs = 0
-            currentTopLevelDir = None
 
             # For exponential moving average (EMA)
             lastEstimate = None
@@ -235,7 +268,6 @@ class Database:
                     # Increment after we have finished one top level dir
                     # and have moved to the next
                     finishedTopLevelDirs += 1
-                    currentTopLevelDir = root
 
                 finishedFiles += len(files)
 
@@ -306,7 +338,8 @@ class Database:
             path = os.path.splitdrive(tags['path'][0])[1]
             path = path.replace(os.sep, '/')
 
-            if callback: callback(path)
+            if callback:
+                callback(path)
 
             entry = IndexEntry()
 

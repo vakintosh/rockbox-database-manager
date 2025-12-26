@@ -26,7 +26,7 @@ def TagBool(value, rep=None):
     that evaluates to the specified bool value.
     """
     if rep is None:
-        if value == True:
+        if value:
             rep = '1'
         else:
             rep = ''

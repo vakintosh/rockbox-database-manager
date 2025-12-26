@@ -62,19 +62,19 @@ class Frame ( wx.Frame ):
 		
 		self.m_staticText17 = wx.StaticText( self.m_panel5, wx.ID_ANY, "Field", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_staticText17.Wrap( -1 )
-		self.m_staticText17.SetFont( wx.Font( wx.NORMAL_FONT.GetPointSize(), 70, 90, 92, False, wx.EmptyString ) );
+		self.m_staticText17.SetFont( wx.Font( wx.NORMAL_FONT.GetPointSize(), 70, 90, 92, False, wx.EmptyString ) )
 		
 		fgSizer1.Add( self.m_staticText17, 0, wx.ALL, 5 )
 		
 		self.m_staticText171 = wx.StaticText( self.m_panel5, wx.ID_ANY, "Format", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_staticText171.Wrap( -1 )
-		self.m_staticText171.SetFont( wx.Font( wx.NORMAL_FONT.GetPointSize(), 70, 90, 92, False, wx.EmptyString ) );
+		self.m_staticText171.SetFont( wx.Font( wx.NORMAL_FONT.GetPointSize(), 70, 90, 92, False, wx.EmptyString ) )
 		
 		fgSizer1.Add( self.m_staticText171, 0, wx.ALL, 5 )
 		
 		self.m_staticText172 = wx.StaticText( self.m_panel5, wx.ID_ANY, "Sort Format", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_staticText172.Wrap( -1 )
-		self.m_staticText172.SetFont( wx.Font( wx.NORMAL_FONT.GetPointSize(), 70, 90, 92, False, wx.EmptyString ) );
+		self.m_staticText172.SetFont( wx.Font( wx.NORMAL_FONT.GetPointSize(), 70, 90, 92, False, wx.EmptyString ) )
 		
 		fgSizer1.Add( self.m_staticText172, 0, wx.ALL, 5 )
 		

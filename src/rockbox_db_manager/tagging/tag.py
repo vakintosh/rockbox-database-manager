@@ -1,8 +1,11 @@
 # All the files we can read
+import os
+from warnings import warn
+import mutagen
 from mutagen.asf import ASF
 from mutagen.apev2 import APEv2File as APE
 from mutagen.flac import FLAC
-from mutagen.easyid3 import EasyID3FileType as ID3
+from mutagen.easyid3 import EasyID3FileType as ID3, EasyID3
 from mutagen.mp3 import EasyMP3 as MP3
 from mutagen.oggvorbis import OggVorbis as Vorbis
 from mutagen.wavpack import WavPack
@@ -19,9 +22,6 @@ def read(filename, force_string = False):
         return None
 File = read
 
-from warnings import warn
-
-import os
 class Tag:
     """
     Encapsulates a mutagen tag object so that property access is simillar across
@@ -177,13 +177,13 @@ class Tag:
     def RegisterKey(cls, name, type='default',
                     getter=None, setter=None, deleter=None,
                     convert=None):
-        if not type in cls.field_map:
+        if type not in cls.field_map:
             cls.field_map[type] = {}
 
         # Figure out the conversion function
         if type == 'default':
             if not convert:
-                conter = cls.conv_default
+                pass
         else:
             if not convert:
                 try:
@@ -530,8 +530,6 @@ for tag_type, name_func in {
 #-------------------------------------------------------------------------------
 # MP3 / ID3 additions
 #-------------------------------------------------------------------------------
-import mutagen
-from mutagen.easyid3 import EasyID3
 
 def RegisterAdaptableKey(name, key_finder, key_setter):
     """
@@ -665,7 +663,7 @@ def RegisterNumberPair(number_name, total_name, frameid, txxxdesc):
             assert len(frame.text) == 1
             frame.text = [number + '/' + total]
         except KeyError:
-            new_txxx_frame(id3, key, total)
+            new_txxx_field(id3, txxxdesc, [total])
 
     def number_deleter(id3, key):
         try:
@@ -682,7 +680,7 @@ def RegisterNumberPair(number_name, total_name, frameid, txxxdesc):
         except KeyError:
             del(id3[txxxframe])
         else:
-            number_setter(ide, key, number)
+            number_setter(id3, key, number)
 
 
     EasyID3.RegisterKey(number_name, number_getter, number_setter, number_deleter)

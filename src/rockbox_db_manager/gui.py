@@ -1,12 +1,12 @@
 import wx
 import wx.lib.newevent
 import functools
-import _thread
-import time
+import threading
 import sys
+from typing import Callable, Optional, Any
 
 from .database import Database
-from .defs import ENCODING, FORMATTED_TAGS
+from .defs import FORMATTED_TAGS
 from . import wxFB_gui
 
 
@@ -126,7 +126,7 @@ class Info(object):
         return property(__get, __set)
 
     gauge = _make_property('gauge')
-    time = _make_property('time')
+    time_value = _make_property('time')  # Renamed to avoid shadowing time module
     description = _make_property('description')
     status = _make_property('status')
 
@@ -316,52 +316,37 @@ class MyFrame(wxFB_gui.Frame):
             _info = self.infopanel.MakeRow('Reading database')
         )
 
-    def start_thread(self, func, *args, **kwargs):
+    def start_thread(self, func: Callable, *args: Any, **kwargs: Any) -> None:
         """Execute a func with *args and **kwargs in a new thread.
 
-        Event handlers can be bound as kwargs using the keys
-            _start
-            _message
-            _end
+        Event handlers can be bound as kwargs using the keys:
+            _start: Called when thread starts
+            _message: Called for progress updates
+            _end: Called when thread completes
 
         An Info object that will be passed to the event handlers can be
         specified with the kwarg '_info'
 
+        Args:
+            func: The function to execute in the thread
+            *args: Positional arguments to pass to func
+            **kwargs: Keyword arguments to pass to func (special keys prefixed with _ are intercepted)
         """
         # Extract the event handler functions from kwargs, and remove them,
         # so they aren't passed to func
-        try:
-            end = kwargs['_end']
-            del kwargs['_end']
-        except KeyError:
-            def end(evt):
-                pass
-        try:
-            start = kwargs['_start']
-            del kwargs['_start']
-        except KeyError:
-            start = None
-
-        try:
-            message = kwargs['_message']
-            del kwargs['_message']
-        except KeyError:
-            message = None
-
-        try:
-            info = kwargs['_info']
+        end: Callable = kwargs.pop('_end', lambda evt: None)
+        start: Optional[Callable] = kwargs.pop('_start', None)
+        message: Optional[Callable] = kwargs.pop('_message', None)
+        info = kwargs.pop('_info', None)
+        
+        if info is not None:
             self.thread_info.append(info)
-            del kwargs['_info']
-        except KeyError:
-            info = None
 
-        # A dummy function that will be called to start the thread
-        # This automatically binds, calls, and unbinds the event handlers
-        # if they are supplied.
-        def do_it(dummy):
+        # Worker function that will be called in the thread
+        def worker() -> None:
             try:
                 if start:
-                    def start_func(evt):
+                    def start_func(evt: Any) -> None:
                         evt.info = info
                         start(evt)
                         self.Unbind(EVT_THREAD_START, None)
@@ -369,31 +354,35 @@ class MyFrame(wxFB_gui.Frame):
                     ThreadEvent.post_start(self)
 
                 if message:
-                    def message_func(evt):
+                    def message_func(evt: Any) -> None:
                         evt.info = info
                         message(evt)
                     self.Bind(EVT_THREAD_CALLBACK, message_func)
 
-                func(
-                     *(args if args is not None else ()),
-                    **(kwargs if kwargs is not None else {})
-                )
+                # Execute the actual function
+                func(*args, **kwargs)
 
-                def end_func(evt):
+                def end_func(evt: Any) -> None:
                     evt.info = info
                     end(evt)
                     self.Unbind(EVT_THREAD_END, None)
                     if message:
                         self.Unbind(EVT_THREAD_CALLBACK, None)
-                    self.thread_info.remove(info)
+                    if info in self.thread_info:
+                        self.thread_info.remove(info)
                 self.Bind(EVT_THREAD_END, end_func)
                 ThreadEvent.post_end(self)
 
-            # This is the only way we have to kill our threads
             except SystemExit:
+                # Allow clean thread termination
                 pass
+            except Exception as e:
+                # Log any unexpected errors
+                print(f"Thread error: {e}", file=sys.stderr)
 
-        _thread.start_new_thread(do_it, (None,))
+        # Create and start the daemon thread
+        thread = threading.Thread(target=worker, daemon=True)
+        thread.start()
 
 
     def OnClose(self, evt):
@@ -428,7 +417,7 @@ class FieldPane(wxFB_gui.FieldPane):
         values = {}
         for entry in self.entries:
             value = entry[self.field]
-            if not value in values:
+            if value not in values:
                 values[value.data] = value.sort_value()
 
         values = sorted(values.keys(), key = lambda k: values[k])
@@ -569,10 +558,11 @@ class FieldPanePanel(wx.Panel):
 
         return func
 
-import sys
 
 class MyApp(wx.App):
-    def OnInit(self):
+    """Main wxPython application class."""
+    
+    def OnInit(self) -> bool:
         self.frame = MyFrame(None)
         return True
 

@@ -24,7 +24,10 @@
 # authors and should not be interpreted as representing official policies, either expressed
 # or implied, of the above copyright holder.
 
-import sys, os, mmap, time
+import sys
+import os
+import mmap
+import time
 
 mapping = [0,1,2,3,4,5,6,7,8]
 
@@ -163,8 +166,8 @@ class Database(list):
             for n in range(9):
                 tname = TAGS[n]
                 offset = e[n]
-                l = to_int(mmaps[n][offset:offset+4])
-                raw_string = mmaps[n][offset+8:offset+8+l]
+                length = to_int(mmaps[n][offset:offset+4])
+                raw_string = mmaps[n][offset+8:offset+8+length]
                 # Split by null byte and decode from bytes to string
                 e[tname] = raw_string.split(b'\x00')[0].decode('utf-8', errors='replace')
                 del e[n]
@@ -205,13 +208,13 @@ class Database(list):
                         # pad the string
                         if (len(tag)-4) % 8:
                             tag += b"X" * (8 - ((len(tag)-4) % 8))
-                    l = len(tag)
+                    length = len(tag)
                     id = self.index(e)
-                    f.write(to_str(l,2))
+                    f.write(to_str(length,2))
                     f.write(to_str(id,2))
                     f.write(tag)
                     e[tn] = 12 + length
-                    length += 4 + l
+                    length += 4 + length
 
             else:
                 tags = {}
@@ -233,14 +236,14 @@ class Database(list):
                     # pad the string
                     if (len(tag)-4) % 8:
                         tag += b"X" * (8 - ((len(tag)-4) % 8))
-                    l = len(tag)
+                    length = len(tag)
                     id = 65535
-                    f.write(to_str(l,2))
+                    f.write(to_str(length,2))
                     f.write(to_str(id,2))
                     f.write(tag)
                     for e in tags[rawtag]:
                         e[tn] = 12 + length
-                    length += 4 + l
+                    length += 4 + length
             
             # go back and fill in the header properly
             f.seek(4)
@@ -316,5 +319,5 @@ if __name__ == '__main__':
 
     # Print all filenames for tracks that have been played partially
     for e in db:
-        if e['playcount'] > 0 and e['lastoffset'] != 0 and not FLAGS[1] in e.flags:
+        if e['playcount'] > 0 and e['lastoffset'] != 0 and FLAGS[1] not in e.flags:
             print(e['filename'])

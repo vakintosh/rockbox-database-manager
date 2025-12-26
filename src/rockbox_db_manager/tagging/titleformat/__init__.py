@@ -1,9 +1,9 @@
 from . import statement
-from .statement import Statement
-from .conditional import Conditional
-from .field import Field
-from .string import String
-from .function import Function
+from .statement import Statement as Statement
+from .conditional import Conditional as Conditional
+from .field import Field as Field
+from .string import String as String
+from .function import Function as Function
 
 def compile(format_string):
     titleformat, dummy_length = statement.parse(format_string)

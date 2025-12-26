@@ -1,4 +1,7 @@
-import sys, os, mmap, time
+import sys
+import os
+import mmap
+import time
 
 mapping = [0,1,2,3,4,5,6,7,8]
 
@@ -80,7 +83,7 @@ def unix_to_mtime(unix):
     return total
 
 def reprnonstr(s):
-    if type(s) == str:
+    if isinstance(s, str):
         return s
     else:
         return repr(s)
@@ -212,7 +215,7 @@ if __name__ == '__main__':
 
     try:
         num = str(mapping[int(sys.argv[1])])
-    except:
+    except (IndexError, ValueError):
         num = "idx"
 
     filename = f"database_{num}.tcd"
