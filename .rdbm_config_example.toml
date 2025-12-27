@@ -50,6 +50,20 @@ last_tags_file = ""
 
 
 # -----------------------------------------------------------------------------
+# Database Settings
+# -----------------------------------------------------------------------------
+# Control database format and compatibility.
+
+[database]
+# Database version to generate
+# Options:
+#   13 - Legacy format (compatible with older Rockbox builds)
+#   16 - Current format (recommended for recent Rockbox builds)
+# Default: 16
+version = 16
+
+
+# -----------------------------------------------------------------------------
 # Format Strings
 # -----------------------------------------------------------------------------
 # Titleformat strings define how metadata is mapped to Rockbox database fields.

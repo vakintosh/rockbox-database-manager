@@ -21,6 +21,7 @@ dependencies = [
     "wxpython>=4.2.4",
     "tomli-w>=1.0.0",
     "rich>=13.0.0",
+    "watchdog>=3.0.0",
 ]
 
 [project.scripts]

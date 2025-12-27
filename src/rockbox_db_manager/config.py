@@ -45,6 +45,11 @@ class Config:
             "last_output_dir": "",
             "last_tags_file": "",
         },
+        "database": {
+            # Database version: 13 or 16
+            # Version 16 is newer and recommended for recent Rockbox builds
+            "version": 16,
+        },
         "formats": {
             # Default format strings for each field
             "artist": "%artist%",
@@ -180,3 +185,22 @@ class Config:
     def get_all_sort_formats(self) -> Dict[str, str]:
         """Get all sort format strings."""
         return self.data["sort_formats"].copy()
+
+    # Database settings
+    def get_database_version(self) -> int:
+        """Get database version (13 or 16).
+        
+        Returns:
+            Database version number (defaults to 16 if not configured)
+        """
+        return self.data.get("database", {}).get("version", 16)
+
+    def set_database_version(self, version: int) -> None:
+        """Set database version.
+        
+        Args:
+            version: Database version (13 or 16)
+        """
+        if "database" not in self.data:
+            self.data["database"] = {}
+        self.data["database"]["version"] = version

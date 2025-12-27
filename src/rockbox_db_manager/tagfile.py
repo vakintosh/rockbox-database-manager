@@ -235,9 +235,11 @@ class TagEntry:
     @staticmethod
     def from_file(f, is_path=False):
         """Return a TagFile given a file object."""
+        # Store offset BEFORE reading header to match how it's written in to_file()
+        offset_before = f.tell()
         length, index = struct.unpack('II', f.read(4 * 2))
         entry = TagEntry()
-        entry.offset = f.tell()
+        entry.offset = offset_before
         entry.raw_data = f.read(length)
         entry.index = index
         entry.is_path = is_path
