@@ -40,7 +40,7 @@ A Python-based utility to accelerate Rockbox library management by generating da
 **Tested on:**
 - ✅ macOS Sonoma 14.8.3 (Intel Mac)
 - ✅ maOS Tahoe 26.1 (Apple Silicon Macs)
-- 🔄 Linux (in progress)
+- 🔄 Ubuntu 24.04 LTS (Kernel 6.17.0, aarch64 / Raspberry Pi) (in progress)
 - 🔄 Windows (in progress)
 
 ---
