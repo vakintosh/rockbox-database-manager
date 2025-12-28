@@ -10,6 +10,7 @@ from typing import Optional, Callable
 from ..constants import FILE_TAGS
 from ..tagging.tag.tagfile import TagFile
 from ..indexfile import IndexFile
+import sys
 
 
 def myprint(*args, **kwargs):
@@ -17,7 +18,6 @@ def myprint(*args, **kwargs):
     sep = kwargs.get('sep', ' ')
     end = kwargs.get('end', '\n')
     
-    import sys
     sys.stdout.write(sep.join(str(a) for a in args) + end)
 
 

@@ -7,6 +7,7 @@ database generation by avoiding repeated file reads.
 import pickle
 import gzip
 import gc
+import logging
 from collections import OrderedDict
 from typing import Optional, Callable, Any
 
@@ -199,7 +200,6 @@ class TagCache:
             valid_paths = [p for p in paths_set if p in cls._cache]
             missing_count = len(paths_set) - len(valid_paths)
             if missing_count > 0:
-                import logging
                 logging.warning(
                     f"Cache trimmed during scan: {missing_count} files not in cache. "
                     f"Consider increasing MAX_CACHE_SIZE (current: {cls.MAX_CACHE_SIZE}) "

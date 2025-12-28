@@ -580,8 +580,6 @@ class FieldPanePanel(wx.Panel):
 
         return func
 
-import sys
-
 class MyApp(wx.App):
     def OnInit(self):
         self.frame = MyFrame(None)

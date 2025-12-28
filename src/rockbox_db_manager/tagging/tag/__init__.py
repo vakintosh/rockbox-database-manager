@@ -6,7 +6,7 @@ audio file metadata across various formats (MP3, FLAC, MP4, etc.).
 """
 
 from .core import Tag
-from .formats import read, File, formats
+from .formats import read, SUPPORTED_EXTENSIONS, FORMAT_MAPPING
 from .mappings import setup_all_mappings
 
 # Initialize all tag field mappings
@@ -15,6 +15,6 @@ setup_all_mappings()
 __all__ = [
     'Tag',
     'read',
-    'File',
-    'formats',
+    'SUPPORTED_EXTENSIONS',
+    'FORMAT_MAPPING',
 ]

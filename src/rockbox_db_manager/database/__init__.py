@@ -15,18 +15,7 @@ interface for creating and managing Rockbox database files.
 
 import multiprocessing
 from typing import Optional, Callable, List
-
-try:
-    from .. import tagging
-    from ..tagging import titleformat
-except ImportError:
-    tagging = None
-    titleformat = None
-    import warnings
-    def warn_no_tags():
-        warnings.warn("Tagging support is disabled!\n" + \
-                      "Please install the mutagen tag library.\n" +\
-                      "(Available from http://code.google.com/p/mutagen/)")
+import logging
 
 from ..constants import FORMATTED_TAGS, FILE_TAGS
 from ..tagging.tag.tagfile import TagFile
@@ -38,6 +27,20 @@ from .file_scanner import FileScanner, myprint
 from .generator import DatabaseGenerator
 from .io import DatabaseIO
 
+def warn_no_tags():
+    """Warn when tagging support is unavailable."""
+    logging.warning("Tagging support is disabled!\n" + 
+                  "Please install the mutagen tag library.\n" +
+                  "(Available from https://github.com/quodlibet/mutagen)")
+
+try:
+    from .. import tagging
+    from ..tagging import titleformat
+except ImportError:
+    warn_no_tags()
+    tagging = None
+    titleformat = None
+
 
 class Database:
     """Main Database class for Rockbox Database Manager.
@@ -46,10 +49,6 @@ class Database:
     and I/O operations. It provides a high-level interface for creating and
     managing Rockbox database files.
     """
-    
-    # Expose tag cache for backward compatibility
-    tag_cache = TagCache.get_cache()
-    MAX_CACHE_SIZE = TagCache.MAX_CACHE_SIZE
     
     def __init__(self, config: Optional[Config] = None):
         """Initialize a new Database instance.

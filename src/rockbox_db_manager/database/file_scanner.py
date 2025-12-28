@@ -5,23 +5,24 @@ from audio files with support for parallel processing.
 """
 
 import os
+import sys
+import logging
 from typing import Optional, Callable, List, Any, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
 from ..tagging.tag.formats import SUPPORTED_EXTENSIONS as audio_formats
-import logging
+from .cache import TagCache
+
+def warn_no_tags():
+    logging.warning("Tagging support is disabled!\n" + \
+                    "Please install the mutagen tag library.\n" +\
+                    "(Available from http://code.google.com/p/mutagen/)")
 
 try:
     from .. import tagging
 except ImportError:
     tagging = None
-    import warnings
-    def warn_no_tags():
-        warnings.warn("Tagging support is disabled!\n" + \
-                      "Please install the mutagen tag library.\n" +\
-                      "(Available from http://code.google.com/p/mutagen/)")
-
-from .cache import TagCache
+    warn_no_tags()
 
 
 def myprint(*args, **kwargs):
@@ -33,7 +34,6 @@ def myprint(*args, **kwargs):
     sep = kwargs.get('sep', ' ')
     end = kwargs.get('end', '\n')
     
-    import sys
     sys.stdout.write(sep.join(str(a) for a in args) + end)
 
 
@@ -234,6 +234,8 @@ class FileScanner:
             dircallback(root)
             for file in files:
                 file_path = os.path.join(root, file)
+                if os.path.splitext(file_path)[1].lower() not in self.supported_extensions:
+                    continue
                 all_files.append(file_path)
             if not recursive:
                 break

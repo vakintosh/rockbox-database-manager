@@ -1,5 +1,4 @@
-from . import statement
-from .tagbool import TagFalse
+from .base import Statement, TagFalse
 
 def parse(format):
     """Parse a conditional titleformat statement.
@@ -10,23 +9,25 @@ def parse(format):
         '[' statement ']'
     
     """
+    # Local import to break the circle
+    from . import statements
+
     assert format.startswith('['), 'Missing starting square bracket'
-    tf,length = statement.parse(format[1:], end_chars = ']')
+    tf, length = statements.parse(format[1:], end_chars=']')
     return Conditional(tf), length + 2 # two []
 
-class Conditional(statement.Statement):
+class Conditional(Statement):
 
     """A titleformat object representing a conditional statement."""
 
     def format(self, tags):
-        ret = statement.Statement.format(self, tags)
+        ret = Statement.format(self, tags)
         if isinstance(ret, list):
             return [r if r else TagFalse() for r in ret]
-        else:
-            return ret if ret else TagFalse()
+        return ret if ret else TagFalse()
 
     def __repr__(self):
         return 'Conditional({})'.format(', '.join(repr(part) for part in self))
 
     def to_string(self):
-        return '[' + statement.Statement.to_string(self) + ']'
+        return '[' + super().to_string() + ']'

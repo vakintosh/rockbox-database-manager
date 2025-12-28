@@ -25,7 +25,7 @@ from .statement import Statement as Statement
 from .conditional import Conditional as Conditional
 from .field import Field as Field
 from .string import String as String
-from .function import Function as Function
+from .function import Function
 
 
 def compile(format_string):

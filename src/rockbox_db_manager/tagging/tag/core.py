@@ -7,6 +7,8 @@ from warnings import warn
 from mutagen.apev2 import APEv2File as APE
 from mutagen.flac import FLAC
 from mutagen.mp3 import EasyMP3 as MP3
+from mutagen.flac import SeekPoint
+from mutagen.apev2 import APEv2File
 
 from .utils import conv_string_list, conv_default
 
@@ -248,7 +250,6 @@ class Tag:
 
         # The info is pickled as a dictionary for APE tags
         if isinstance(self.tags, APE):
-            from mutagen.apev2 import APEv2File
             info = self.tags.info
             self.tags.info = object.__new__(APEv2File._Info)
             self.tags.info.__dict__.update(info)
@@ -257,7 +258,6 @@ class Tag:
         elif isinstance(self.tags, FLAC) and \
                 self.tags.seektable is not None and \
                 self.tags.seektable.seekpoints is not None:
-            from mutagen.flac import SeekPoint
             self.tags.seektable.seekpoints = \
                 [SeekPoint(*pt) for pt in self.tags.seektable.seekpoints]
 

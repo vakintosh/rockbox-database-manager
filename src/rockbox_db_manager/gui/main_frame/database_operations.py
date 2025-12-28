@@ -10,6 +10,7 @@ import wx
 from ..error_handling import show_error_dialog, validate_path
 from ..field_panes import DatabaseEvent
 from ...constants import FORMATTED_TAGS
+from ...database import Database
 
 
 class DatabaseOperations:
@@ -330,7 +331,6 @@ class DatabaseOperations:
             DatabaseEvent.post_updated(self.frame.panes, self.frame.database)
 
         def read_database(directory, callback=None):
-            from ...database import Database
             self.frame.database = Database.read(directory, callback)
 
         self.frame.threading_support.start_thread(

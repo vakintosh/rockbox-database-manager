@@ -10,6 +10,7 @@ from rich.console import Console
 from rich.table import Table
 
 from ...database import Database
+from ...database.cache import TagCache
 from ...config import Config
 from ..callbacks import ProgressCallback, log_callback
 
@@ -83,10 +84,10 @@ def cmd_generate(args: argparse.Namespace) -> None:
         else:
             logging.info(f"Loading tags from: {tags_path}")
             db.load_tags(str(tags_path), callback=log_callback)
-            logging.info(f"Loaded {len(db.tag_cache)} cached tags")
+            tag_cache = TagCache.get_cache()
+            logging.info(f"Loaded {len(tag_cache)} cached tags")
     else:
         # Clear any stale cache from previous operations
-        from rockbox_db_manager.database.cache import TagCache
         TagCache.clear()
         logging.debug("Cleared stale tag cache")
 

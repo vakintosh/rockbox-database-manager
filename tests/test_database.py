@@ -4,6 +4,8 @@ import tempfile
 import os
 from rockbox_db_manager.database import Database
 from rockbox_db_manager.constants import FORMATTED_TAGS
+from rockbox_db_manager.database import myprint
+
 
 
 class TestDatabase:
@@ -86,7 +88,6 @@ class TestDatabaseHelpers:
 
     def test_myprint_function(self):
         """Test myprint helper doesn't crash."""
-        from rockbox_db_manager.database import myprint
         
         # Should not raise an exception
         myprint("test")

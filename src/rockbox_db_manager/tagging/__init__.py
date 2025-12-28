@@ -18,7 +18,7 @@ Main exports:
     format: Format tags using titleformat strings
 """
 
-__all__ = ["tag", "titleformat", "read", "format", "Tag", "File"]
+__all__ = ["tag", "titleformat", "read", "format", "Tag"]
 
-from .tag import read, Tag, File
+from .tag import read, Tag
 from .titleformat import format

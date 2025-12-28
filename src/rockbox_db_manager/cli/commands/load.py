@@ -7,6 +7,7 @@ from pathlib import Path
 
 from ...database import Database
 from ..callbacks import log_callback
+from ...constants import FILE_TAGS
 
 
 def cmd_load(args: argparse.Namespace) -> None:
@@ -41,7 +42,6 @@ def cmd_load(args: argparse.Namespace) -> None:
     print(f"  Entries:  {db.index.count}")
 
     # Show tag file counts
-    from ...constants import FILE_TAGS
 
     print("\nTag Files:")
     for field in FILE_TAGS:

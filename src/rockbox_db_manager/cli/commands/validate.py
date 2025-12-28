@@ -11,6 +11,7 @@ from rich.console import Console
 from rich.table import Table
 
 from ...database import Database
+from ...constants import FILE_TAGS
 
 
 def cmd_validate(args: argparse.Namespace) -> None:
@@ -36,7 +37,6 @@ def cmd_validate(args: argparse.Namespace) -> None:
     warnings: List[str] = []
 
     # Check if all required files exist
-    from ...constants import FILE_TAGS
     
     with Progress(
         SpinnerColumn(),

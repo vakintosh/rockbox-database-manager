@@ -6,6 +6,7 @@ music file tags with support for parallel processing.
 
 import os
 import gc
+import sys
 from itertools import product
 from typing import Optional, Callable, Dict, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -29,7 +30,6 @@ def myprint(*args, **kwargs):
     sep = kwargs.get('sep', ' ')
     end = kwargs.get('end', '\n')
     
-    import sys
     sys.stdout.write(sep.join(str(a) for a in args) + end)
 
 class DatabaseGenerator:

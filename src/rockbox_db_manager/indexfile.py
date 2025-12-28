@@ -3,6 +3,7 @@ import struct
 from .utils import fat_to_mtime
 from .constants import MAGIC, TAGS, FILE_TAGS, EMBEDDED_TAGS, SUPPORTED_VERSIONS
 from .tagging.tag.tagfile import TagEntry
+import logging
 
 class IndexFile:
     def __init__(self, entries=None, tagfiles=None):
@@ -90,11 +91,9 @@ class IndexFile:
         
         # Validate size but don't fail - database versions may calculate differently
         if size != index.size:
-            import warnings
-            warnings.warn(
+            logging.warning(
                 f"Database size mismatch: header says {size} bytes, calculated {index.size} bytes. "
-                f"This may indicate a version difference or corrupted database, but continuing anyway.",
-                RuntimeWarning
+                f"This may indicate a version difference or corrupted database, but continuing anyway."
             )
         
         return index
@@ -150,7 +149,6 @@ class IndexEntry(dict):
             # Handle invalid or missing offsets gracefully
             if offset == 0 or offset not in tagfiles[field].offsets:
                 # Create a placeholder entry for invalid/missing references
-                from .tagfile import TagEntry
                 index_entry[field] = TagEntry('<Invalid Reference>')
             else:
                 index_entry[field] = tagfiles[field].offsets[offset]
