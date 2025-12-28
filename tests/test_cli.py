@@ -10,7 +10,7 @@ from unittest.mock import patch, Mock
 from argparse import Namespace
 from rich.console import Console
 
-from rockbox_db_manager import rbdb
+from rockbox_db_manager.constants import MAGIC
 from rockbox_db_manager.cli import main, __version__
 from rockbox_db_manager.cli.utils import setup_logging
 from rockbox_db_manager.cli.commands.watch import MusicDirectoryEventHandler
@@ -219,7 +219,7 @@ def test_inspect_with_mock_database(tmp_path):
     index_file = db_dir / "database_idx.tcd"
     with open(index_file, "wb") as f:
         # Write header: magic, datasize, entry_count, serial, commitid, dirty
-        magic = rbdb.MAGIC
+        magic = MAGIC
         datasize = 24  # Header size only
         entry_count = 0
         serial = 0
@@ -247,7 +247,7 @@ def test_inspect_quiet_mode(tmp_path):
     # Create a mock tag file
     tag_file = db_dir / "database_0.tcd"
     with open(tag_file, "wb") as f:
-        magic = rbdb.MAGIC
+        magic = MAGIC
         datasize = 12  # Header only
         entry_count = 0
         f.write(struct.pack('III', magic, datasize, entry_count))
@@ -294,7 +294,7 @@ def test_inspect_all_file_numbers(tmp_path):
     for i in range(9):
         tag_file = db_dir / f"database_{i}.tcd"
         with open(tag_file, "wb") as f:
-            magic = rbdb.MAGIC
+            magic = MAGIC
             datasize = 12  # Header only
             entry_count = 0
             f.write(struct.pack('III', magic, datasize, entry_count))

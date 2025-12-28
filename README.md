@@ -42,34 +42,28 @@ A modern Python 3.11+ application for managing Rockbox database files with both 
   - `generate` - Create database from music folder
   - `load` - Display existing database information
   - `validate` - Check database integrity
-  - `inspect` - Low-level file inspection (replaces rbdb.py)
+  - `inspect` - Low-level file inspection using modern implementation
   - `write` - Copy database to new location
-  - `watch` - Auto-regenerate on file changes
 - **Modern wxPython Phoenix GUI** with intuitive interface
   - Async I/O support to prevent blocking
   - Cancellable operations
   - Real-time progress tracking
-- **Cross-platform**: macOS, Linux, Windows
-- **Comprehensive test suite** with pytest (30 tests, 29% coverage)
 
 ---
 
-## 🚧 Status
+## Status
 
 **Work in Progress** - Under active development
 
 **Tested on:**
 - ✅ macOS Sonoma 14.8.3 (Intel Mac)
+- ✅ maOS Tahoe 26.1 (Apple Silicon Macs)
 - 🔄 Linux (in progress)
 - 🔄 Windows (in progress)
-- 🔄 Apple Silicon Macs (in progress)
-
-**Test Coverage:** 29% baseline with 30/30 tests passing
-- See tests/TEST_STATUS.md for detailed coverage analysis
 
 ---
 
-## 📦 Requirements
+## Requirements
 
 - **Python**: 3.11 or higher
 - **wxPython**: 4.2.4 or higher (requires framework-enabled Python on macOS)
@@ -79,13 +73,13 @@ A modern Python 3.11+ application for managing Rockbox database files with both 
 
 ---
 
-## 🔧 Installation
+## Installation
 
 ### Using UV (Recommended)
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/rockbox-db-manager.git
+git clone https://github.com/vakintosh/rockbox-db-manager.git
 cd rockbox-db-manager
 
 # Sync dependencies (creates virtual environment automatically)
@@ -102,7 +96,7 @@ uv run rockbox-db-manager
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/rockbox-db-manager.git
+git clone https://github.com/vakintosh/rockbox-db-manager.git
 cd rockbox-db-manager
 
 # Create virtual environment
@@ -116,16 +110,12 @@ pip install -e .
 rdbm --help
 
 # Run the GUI
-rockbox-db-manager
+rockbox-db-manager-gui
 ```
-
-### macOS Framework Python
-
-On macOS, wxPython requires framework-enabled Python. See PLATFORM_NOTES.md for detailed instructions.
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Generate a Database
 
@@ -143,7 +133,7 @@ rdbm generate /path/to/music -c ~/.rdbm/.rdbm_config.toml
 rdbm generate /path/to/music --save-tags ~/.rockbox_tags.cache
 
 # Quick regeneration using cached tags
-rdbm generate /path/to/music --load-tags ~/.rockbox_tags.cache
+rdbm generate /path/to/music --load-tags ~/.rockbox_tags.cache.gz
 ```
 
 ### Inspect a Database
@@ -154,9 +144,6 @@ rdbm inspect /Volumes/IPOD/.rockbox
 
 # Inspect artist database (file 0)
 rdbm inspect /Volumes/IPOD/.rockbox 0
-
-# Inspect title database with verbose output
-rdbm inspect /Volumes/IPOD/.rockbox 3 --verbose
 
 # Quiet mode (header only)
 rdbm inspect /Volumes/IPOD/.rockbox 1 --quiet
@@ -170,7 +157,7 @@ rdbm validate /Volumes/IPOD/.rockbox
 
 ---
 
-## 📖 Usage
+## Usage
 
 ### Command-Line Interface (CLI)
 
@@ -389,7 +376,7 @@ rockbox-db-manager
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
 ### Configuration File
 
@@ -419,136 +406,13 @@ rdbm generate /path/to/music -c ~/.rdbm/.rdbm_config.toml
 
 ### Configuration Options
 
-The configuration file supports:
-
-#### Format Strings (foobar2000 titleformat syntax)
-
-```toml
-[formats]
-# Artist name with normalization
-artist = "$replace(%artist%,', ',', ')"
-
-# Album with year
-album = "$if(%date%,[%date%] ,)%album%"
-
-# Genre with multiple values
-genre = "%<genre>%"
-
-# Title
-title = "%title%"
-
-# Filename (full path)
-filename = "%path%"
-
-# Composer (last name first for classical)
-composer = "$if($strstr(%composer%,','),%composer%,$replace(%composer%,', ',' '))"
-
-# Album artist with compilation handling
-albumartist = "$if(%compilation%,Various Artists,$if2(%albumartist%,%artist%))"
-
-# Custom grouping by decade
-grouping = "$if(%date%,$left(%date%,3)0s,Unknown)"
-```
-
-#### Sort Formats
-
-```toml
-[sort_formats]
-# Remove articles from artist names
-artist_sort = "$if($or($strstr(%artist%,'The '),$strstr(%artist%,'A ')),$right(%artist%,$sub($len(%artist%),4)),%artist%)"
-```
-
-#### Database Settings
-
-```toml
-[database]
-# Database version (13 = legacy, 16 = current)
-version = 16
-```
-
-#### Performance Settings
-
-```toml
-[performance]
-# Tag cache size (adjust based on library size)
-tag_cache_size = 50000
-```
-
-### Titleformat Syntax
-
-Format strings use foobar2000 titleformat syntax:
-
-**Basic syntax:**
-- `%field%` - Insert field value
-- `$if(condition,true,false)` - Conditional logic
-- `$if2(field1,field2,...)` - First non-empty field
-- `$replace(str,old,new)` - String replacement
-- `$left(str,n)` - First n characters
-- `$right(str,n)` - Last n characters
-- `$len(str)` - String length
-- `%<field>%` - Multiple-value tag (creates combinatorial entries)
-
-**Examples:**
-
-```toml
-# Classical music: Last name first
-composer = "$if($strstr(%composer%,','),%composer%,$replace(%composer%,', ',' '))"
-
-# Album with year prefix
-album = "$if(%date%,[$left(%date%,4)] ,)%album%"
-
-# Compilations handling
-albumartist = "$if(%compilation%,Various Artists,$if2(%albumartist%,%artist%))"
-
-# Group by decade
-grouping = "$if(%date%,$left(%date%,3)0s,Unknown)"
-```
-
-### Important Notes
-
-1. **Multiple-value tags** (`%<field>%`): Create combinatorial entries
-   - Song with 2 artists + 2 genres = 4 index entries (2×2)
-   - Update `tagnavi.config` to filter `<BLANK>` dummy entries
-
-2. **Test first**: Test format strings on small music subset before processing full collection
-
-3. **Regenerate required**: After changing formats, delete and regenerate database:
-   ```bash
-   rm -rf /Volumes/IPOD/.rockbox
-   rdbm generate /path/to/music -c ~/.rdbm/.rdbm_config.toml
-   ```
-
-4. **Tag cache for speed**: Use `--save-tags` and `--load-tags` for faster regeneration:
-   ```bash
-   # First generation with cache save
-   rdbm generate /path/to/music --save-tags ~/.rockbox_tags.cache
-   
-   # Quick regeneration using cache
-   rdbm generate /path/to/music --load-tags ~/.rockbox_tags.cache
-   ```
+See [.rdbm_config_example.toml](.rdbm_config_example.toml)
 
 For complete titleformat documentation, see: [Foobar2000 Titleformat Reference](http://wiki.hydrogenaudio.org/index.php?title=Foobar2000:Titleformat_Reference)
 
 ---
 
-## 🧪 Testing
-
-### Test Coverage Status
-
-**Current Coverage:** 29% (baseline established)
-**Tests Passing:** 30/30 (100%)
-
-### Coverage by Module
-
-| Module | Coverage | Tests | Status |
-|--------|----------|-------|--------|
-| `utils.py` | 100% | 4/4 | ✅ |
-| `defs.py` | 100% | - | ✅ |
-| indexfile.py | 74% | 7/7 | ✅ |
-| `tagfile.py` | 73% | 10/10 | ✅ |
-| `database.py` | 30% | 9/9 | 🔶 |
-| cli.py | - | - | 🔶 |
-| `gui.py` | 0% | - | ❌ (manual testing) |
+## Testing
 
 ### Running Tests
 
@@ -569,42 +433,6 @@ uv run pytest tests/test_tagfile.py::TestTagFile::test_tagfile_creation -v
 open htmlcov/index.html
 ```
 
-### Test Suite Details
-
-#### test_utils.py (4/4 tests - 100% coverage)
-- Time conversion utilities
-- FAT timestamp handling
-- Round-trip conversions
-
-#### test_tagfile.py (10/10 tests - 73% coverage)
-- TagEntry creation and validation
-- TagFile operations
-- Unicode handling
-- Duplicate entry handling
-- Raw data generation
-
-#### test_indexfile.py (7/7 tests - 74% coverage)
-- IndexEntry creation and manipulation
-- IndexFile operations
-- Dictionary interface
-- Multiple entry handling
-- Size calculations
-
-#### test_database.py (9/9 tests - 30% coverage)
-- Database creation and initialization
-- Write operations
-- Round-trip tests (write/read)
-- Multiple field handling
-- Path handling
-
-#### test_cli.py (CLI tests)
-- Version and help output
-- Command-specific help
-- Missing path handling
-- Logging level configuration
-- Invalid argument handling
-- Mock database inspection
-
 ### Code Quality
 
 ```bash
@@ -618,104 +446,9 @@ uv run mypy src/
 uv run ruff format src/ tests/
 ```
 
-### Test Documentation
 
-See detailed test documentation:
-- README.md - Test running and writing guide
-- tests/TEST_STATUS.md - Detailed coverage analysis
-- tests/FIXES_SUMMARY.md - Test implementation history
 
----
-
-## 📁 Project Structure
-
-```
-rockbox-db-manager/
-├── src/rockbox_db_manager/          # Main application package
-│   ├── __init__.py                  # Package initialization
-│   ├── cli/                         # CLI module
-│   │   ├── __init__.py              # CLI entry point
-│   │   ├── callbacks.py             # Progress callbacks
-│   │   ├── utils.py                 # CLI utilities
-│   │   └── commands/                # CLI commands
-│   │       ├── generate.py          # Generate command
-│   │       ├── load.py              # Load command
-│   │       ├── validate.py          # Validate command
-│   │       ├── write.py             # Write command
-│   │       └── inspect.py           # Inspect command
-│   ├── database/                    # Database operations
-│   │   ├── __init__.py              # Database class
-│   │   ├── indexfile.py             # Index file handling
-│   │   ├── tagfile.py               # Tag file handling
-│   │   └── cache.py                 # Tag caching
-│   ├── tagging/                     # Audio tag reading
-│   │   ├── tag.py                   # Tag extraction
-│   │   └── titleformat/             # Titleformat parsing
-│   ├── gui.py                       # GUI application
-│   ├── rbdb.py                      # Raw DB parser (BSD license)
-│   ├── rblib.py                     # Legacy library functions
-│   ├── config.py                    # Configuration management
-│   ├── constants.py                 # Constants and definitions
-│   └── utils.py                     # Utility functions
-├── tests/                           # Test suite
-│   ├── __init__.py                  # Test package marker
-│   ├── conftest.py                  # Pytest fixtures
-│   ├── test_cli.py                  # CLI command tests
-│   ├── test_database.py             # Database tests
-│   ├── test_indexfile.py            # Index file tests
-│   ├── test_tagfile.py              # Tag file tests
-│   ├── test_utils.py                # Utility tests
-│   ├── README.md                    # Test documentation
-│   ├── TEST_STATUS.md               # Coverage analysis
-│   └── FIXES_SUMMARY.md             # Test history
-├── .rdbm_config_example.toml        # Example configuration
-├── pyproject.toml                   # Project configuration
-├── pytest.ini                       # Pytest configuration
-├── mypy.ini                         # Type checker config
-├── README.md                        # This file
-├── PLATFORM_NOTES.md                # Platform-specific notes
-└── LICENSE                          # GPL v2 license
-```
-
----
-
-## 💻 Platform Notes
-
-### macOS
-
-wxPython requires framework-enabled Python:
-
-```bash
-# Using UV with framework Python
-uv run --python /Library/Frameworks/Python.framework/Versions/3.11/bin/python3 rockbox-db-manager
-```
-
-See PLATFORM_NOTES.md for detailed macOS setup instructions.
-
-### Linux
-
-Standard installation works on most distributions. wxPython may require additional system libraries:
-
-```bash
-# Debian/Ubuntu
-sudo apt-get install python3-wxgtk4.0
-
-# Fedora
-sudo dnf install python3-wxpython4
-```
-
-### Windows
-
-Standard installation should work. If you encounter issues with wxPython:
-
-```bash
-# Install pre-built wheel
-pip install -U -f https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-20.04 wxPython
-```
-
----
-
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please ensure:
 
@@ -733,13 +466,11 @@ Contributions are welcome! Please ensure:
 
 4. **Code follows existing style conventions**
 
-5. **Coverage remains at or above baseline (29%)**
-
 ### Development Setup
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/rockbox-db-manager.git
+git clone https://github.com/vakintosh/rockbox-db-manager.git
 cd rockbox-db-manager
 
 # Install with dev dependencies
@@ -757,40 +488,15 @@ uv run mypy src/
 
 ---
 
-## 🏆 Credits & History
+## License
 
-### Original Author (2009)
-**Mike Richards** - Original Python 2.x implementation with wxPython Classic
-
-### This Version (2025)
-**Vakintosh** - Complete modernization and Python 3.11+ migration
-
-**Major Changes:**
-- Python 3.11+ compatibility (from Python 2.5/2.6)
-- wxPython Phoenix (4.x) migration
-- Modern CLI with rich formatting
-- UV project structure with proper packaging
-- Framework-enabled Python support for macOS
-- Updated dependencies (mutagen 1.47+, wxPython 4.2.4+, rich)
-- Cross-platform path handling improvements
-- Comprehensive test suite with pytest (30 tests)
-- Type hints and modern Python practices
-- Memory leak fixes and resource management
-- Code quality enforcement with ruff
-- 29% test coverage baseline established
-
----
-
-## 📄 License
-
-- **Main project:** GPL v2 or later
-- **rbdb.py:** BSD-style license (see file header for details)
+GPL v2 or later
 
 See LICENSE for full license text.
 
 ---
 
-## 📚 Additional Resources
+## Additional Resources
 
 - [Rockbox Official Website](https://www.rockbox.org/)
 - [Rockbox Database Format](https://www.rockbox.org/wiki/DataBase)
@@ -800,21 +506,13 @@ See LICENSE for full license text.
 
 ---
 
-## 🐛 Known Issues
+## Known Issues
 
 - GUI testing requires manual verification (0% automated coverage)
 - Some titleformat functions not yet fully implemented
 - Watch command disabled pending further testing
 
 See [GitHub Issues](https://github.com/yourusername/rockbox-db-manager/issues) for complete list and updates.
-
----
-
-## 📧 Contact
-
-For questions, bug reports, or feature requests:
-- **Email:** hello@vakintosh.com
-- **GitHub Issues:** [Report an issue](https://github.com/yourusername/rockbox-db-manager/issues)
 
 ---
 

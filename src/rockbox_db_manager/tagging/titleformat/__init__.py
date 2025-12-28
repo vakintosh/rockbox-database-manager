@@ -64,4 +64,7 @@ __all__ = [
     'Field',
     'String',
     'Function',
+    'base',
+    'tagbool',
+    'utils',
 ]

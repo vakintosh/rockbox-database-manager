@@ -289,3 +289,13 @@ class Database:
         db = Database()
         db.tagfiles, db.index = DatabaseIO.read(in_dir, callback)
         return db
+
+
+__all__ = [
+    'Database',
+    'TagCache',
+    'FileScanner',
+    'DatabaseGenerator',
+    'DatabaseIO',
+    'myprint',
+]
