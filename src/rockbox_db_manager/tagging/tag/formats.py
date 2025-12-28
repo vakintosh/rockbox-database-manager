@@ -26,6 +26,12 @@ formats = [
     TrueAudio, AIFF, WAVE, WavPack, MP4, Musepack
 ]
 
+SUPPORTED_EXTENSIONS = {
+    '.asf', '.wma', '.mp3', '.flac', '.ogg', '.opus', '.spx', 
+    '.tta', '.aiff', '.aif', '.wav', '.wv', '.mp4', '.m4a', 
+    '.m4b', '.mpc'
+}
+
 
 def read(filename: str, force_string: bool = False) -> Optional[Tag]:
     """

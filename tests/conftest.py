@@ -24,7 +24,7 @@ def temp_music_dir(tmp_path):
 @pytest.fixture
 def sample_tagfile():
     """Create a sample TagFile for testing."""
-    from rockbox_db_manager.tagfile import TagFile, TagEntry
+    from rockbox_db_manager.tagging.tag.tagfile import TagFile, TagEntry
     
     tagfile = TagFile()
     tagfile.append(TagEntry("Artist 1"))

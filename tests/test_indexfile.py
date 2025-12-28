@@ -1,8 +1,8 @@
 """Tests for IndexFile and IndexEntry classes."""
 
 from rockbox_db_manager.indexfile import IndexFile, IndexEntry
-from rockbox_db_manager.tagfile import TagFile, TagEntry
-from rockbox_db_manager.defs import MAGIC
+from rockbox_db_manager.tagging.tag.tagfile import TagFile, TagEntry
+from rockbox_db_manager.constants import MAGIC
 
 
 class TestIndexEntry:

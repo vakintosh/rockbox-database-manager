@@ -9,7 +9,7 @@ import wx
 
 from ..error_handling import show_error_dialog, validate_path
 from ..field_panes import DatabaseEvent
-from ...defs import FORMATTED_TAGS
+from ...constants import FORMATTED_TAGS
 
 
 class DatabaseOperations:

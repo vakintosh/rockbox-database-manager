@@ -7,8 +7,8 @@ TagCache Database (.tcd) format.
 import os
 from typing import Optional, Callable
 
-from ..defs import FILE_TAGS
-from ..tagfile import TagFile
+from ..constants import FILE_TAGS
+from ..tagging.tag.tagfile import TagFile
 from ..indexfile import IndexFile
 
 

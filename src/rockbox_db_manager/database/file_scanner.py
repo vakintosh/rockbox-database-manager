@@ -8,6 +8,8 @@ import os
 from typing import Optional, Callable, List, Any, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
+from ..tagging.tag.formats import SUPPORTED_EXTENSIONS as audio_formats
+import logging
 
 try:
     from .. import tagging
@@ -46,6 +48,7 @@ class FileScanner:
         """
         self.max_workers = max_workers
         self._lock = Lock()
+        self.supported_extensions = {fmt.lower() for fmt in audio_formats}
     
     def add_file(self, file_path: str, paths_set: set, failed_list: list,
                  callback: Optional[Callable] = myprint) -> None:
@@ -59,6 +62,10 @@ class FileScanner:
         """
         if tagging is None:
             warn_no_tags()
+            return
+        
+        if os.path.splitext(file_path)[1].lower() not in self.supported_extensions:
+            logging.debug(f"Skipping unsupported file format: {file_path}")
             return
 
         path = str(file_path)
@@ -128,6 +135,9 @@ class FileScanner:
             file = str(file)
             if callback and i % batch_size == 0:
                 callback(f"Processing files... {i}/{len(files)}")
+            if os.path.splitext(file)[1].lower() not in self.supported_extensions:
+                logging.debug(f"Skipping unsupported file format: {file}")
+                continue
             self._add_file_internal(file, paths_set, failed_list)
         
         # Final update

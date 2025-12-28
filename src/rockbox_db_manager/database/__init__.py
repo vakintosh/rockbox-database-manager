@@ -28,8 +28,8 @@ except ImportError:
                       "Please install the mutagen tag library.\n" +\
                       "(Available from http://code.google.com/p/mutagen/)")
 
-from ..defs import FORMATTED_TAGS, FILE_TAGS
-from ..tagfile import TagFile
+from ..constants import FORMATTED_TAGS, FILE_TAGS
+from ..tagging.tag.tagfile import TagFile
 from ..indexfile import IndexFile
 from ..config import Config
 

@@ -6,7 +6,7 @@ for titleformat strings used in database generation.
 
 import wx
 
-from ...defs import FORMATTED_TAGS
+from ...constants import FORMATTED_TAGS
 
 
 class FormatManager:

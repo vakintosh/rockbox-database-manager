@@ -3,7 +3,7 @@
 import tempfile
 import os
 from rockbox_db_manager.database import Database
-from rockbox_db_manager.defs import FORMATTED_TAGS
+from rockbox_db_manager.constants import FORMATTED_TAGS
 
 
 class TestDatabase:

@@ -36,7 +36,7 @@ def cmd_validate(args: argparse.Namespace) -> None:
     warnings: List[str] = []
 
     # Check if all required files exist
-    from ...defs import FILE_TAGS
+    from ...constants import FILE_TAGS
     
     with Progress(
         SpinnerColumn(),

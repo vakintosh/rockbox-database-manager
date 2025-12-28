@@ -7,7 +7,7 @@ through the database by genre, artist, album, and title.
 import wx
 import wx.lib.newevent
 
-from .. import wxFB_gui
+from . import wxFB_gui
 
 
 # wxPython Phoenix: Use wx.lib.newevent

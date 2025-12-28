@@ -41,7 +41,7 @@ def cmd_load(args: argparse.Namespace) -> None:
     print(f"  Entries:  {db.index.count}")
 
     # Show tag file counts
-    from ...defs import FILE_TAGS
+    from ...constants import FILE_TAGS
 
     print("\nTag Files:")
     for field in FILE_TAGS:

@@ -7,7 +7,7 @@ of the main application window.
 import wx
 
 from ...database import Database
-from ... import wxFB_gui
+from .. import wxFB_gui
 from ...config import Config
 from ..thread_events import EVT_THREAD_START, EVT_THREAD_CALLBACK, EVT_THREAD_END
 from ..info_panel import InfoPanel

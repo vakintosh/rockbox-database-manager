@@ -10,15 +10,16 @@ from itertools import product
 from typing import Optional, Callable, Dict, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
+import logging
 
 try:
     from ..tagging import titleformat
 except ImportError:
     titleformat = None
 
-from ..defs import FILE_TAGS, EMBEDDED_TAGS
+from ..constants import FILE_TAGS, EMBEDDED_TAGS
 from ..utils import mtime_to_fat
-from ..tagfile import TagEntry
+from ..tagging.tag.tagfile import TagEntry
 from ..indexfile import IndexEntry
 from .cache import TagCache
 
@@ -152,7 +153,6 @@ class DatabaseGenerator:
                 except KeyError:
                     # File not in cache - skip it (should not happen if cache is up to date)
                     # This occurs when scanning a folder that wasn't included in the tag cache
-                    import logging
                     logging.warning(f"File not in cache, skipping: {path}")
                     continue
 
@@ -169,7 +169,6 @@ class DatabaseGenerator:
                     batch_results.append(entry_data)
                 except Exception as e:
                     # Skip problematic entries but log the error
-                    import logging
                     logging.debug(f"Skipped entry {path} due to processing error: {e}")
                     pass
             return batch_results
