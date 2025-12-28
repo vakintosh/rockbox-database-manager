@@ -8,10 +8,17 @@ wheels/
 .ruff_cache
 .pytest_cache
 .mypy_cache
-htmlcov
+
+# Coverage reports
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+
+# Test/profiling artifacts
 .rockbox
 music_test_folder
 
 # Virtual environments
 .venv
-

@@ -5,6 +5,9 @@ This module provides async wrappers for database operations with support for:
 - Progress reporting
 - Cancellation
 - Error handling
+
+Note: This module requires wxPython. It should only be imported when
+wxPython is available (checked via gui.__init__.is_wxpython_available()).
 """
 
 import asyncio
@@ -13,7 +16,12 @@ from typing import Callable, Optional, Any, Coroutine
 from concurrent.futures import ThreadPoolExecutor
 import functools
 
-import wx
+try:
+    import wx
+except ImportError as e:
+    raise ImportError(
+        "This module requires wxPython. Install with: pip install rockbox-db-manager[gui]"
+    ) from e
 
 
 class AsyncOperation:

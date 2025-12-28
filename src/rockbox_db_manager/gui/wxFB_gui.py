@@ -5,7 +5,12 @@
 ## PLEASE DO "NOT" EDIT THIS FILE!
 ###########################################################################
 
-import wx
+try:
+    import wx
+except ImportError as e:
+    raise ImportError(
+        "This module requires wxPython. Install with: pip install rockbox-db-manager[gui]"
+    ) from e
 
 ###########################################################################
 ## Class Frame

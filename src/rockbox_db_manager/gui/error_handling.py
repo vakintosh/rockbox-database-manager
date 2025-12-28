@@ -1,12 +1,20 @@
 """Error handling utilities for the Rockbox Database Manager GUI.
 
 This module provides error dialogs and validation functions for user input.
+
+Note: This module requires wxPython. It should only be imported when
+wxPython is available (checked via gui.__init__.is_wxpython_available()).
 """
 
 from pathlib import Path
 from typing import Optional
 
-import wx
+try:
+    import wx
+except ImportError as e:
+    raise ImportError(
+        "This module requires wxPython. Install with: pip install rockbox-db-manager[gui]"
+    ) from e
 
 
 def show_error_dialog(

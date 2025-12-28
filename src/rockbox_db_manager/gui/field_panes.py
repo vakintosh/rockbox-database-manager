@@ -2,10 +2,19 @@
 
 This module provides UI components for filtering and browsing
 through the database by genre, artist, album, and title.
+
+Note: This module requires wxPython. It should only be imported when
+wxPython is available (checked via gui.__init__.is_wxpython_available()).
 """
 
-import wx
-import wx.lib.newevent
+try:
+    import wx
+    import wx.lib.newevent
+except ImportError as e:
+    raise ImportError(
+        "This module requires wxPython. Install with: pip install rockbox-db-manager[gui]"
+    ) from e
+
 from typing import Any
 
 from . import wxFB_gui

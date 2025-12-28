@@ -31,8 +31,8 @@ from .commands import (
 from ..config import Config
 from ..database.cache import TagCache
 
-# Version - should match pyproject.toml
-__version__ = "0.3.0"
+# Import version from parent package (dynamically read from pyproject.toml)
+from .. import __version__
 
 __all__ = [
     "main",

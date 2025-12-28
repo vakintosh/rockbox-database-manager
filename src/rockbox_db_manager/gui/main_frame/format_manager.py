@@ -2,9 +2,17 @@
 
 This module handles loading, saving, validation, and template management
 for titleformat strings used in database generation.
+
+Note: This module requires wxPython. It should only be imported when
+wxPython is available (checked via gui.__init__.is_wxpython_available()).
 """
 
-import wx
+try:
+    import wx
+except ImportError as e:
+    raise ImportError(
+        "This module requires wxPython. Install with: pip install rockbox-db-manager[gui]"
+    ) from e
 
 from ...constants import FORMATTED_TAGS
 
@@ -14,7 +22,7 @@ class FormatManager:
 
     def __init__(self, frame):
         """Initialize the format manager.
-        
+
         Args:
             frame: The MyFrame instance
         """
@@ -107,7 +115,7 @@ class FormatManager:
 
     def get_format_templates(self) -> dict:
         """Return a dictionary of common format string templates.
-        
+
         Returns:
             Dictionary mapping template names to field configurations
         """
@@ -173,7 +181,7 @@ class FormatManager:
 
     def _show_template_menu(self, evt, ctrl, field, is_sort):
         """Show context menu with format templates.
-        
+
         Args:
             evt: Context menu event
             ctrl: The control to apply template to
@@ -218,7 +226,7 @@ class FormatManager:
 
     def _copy_format(self, ctrl):
         """Copy format string to clipboard.
-        
+
         Args:
             ctrl: Control to copy from
         """
@@ -228,7 +236,7 @@ class FormatManager:
 
     def _paste_format(self, ctrl):
         """Paste format string from clipboard.
-        
+
         Args:
             ctrl: Control to paste into
         """
@@ -240,7 +248,7 @@ class FormatManager:
 
     def _apply_template(self, ctrl, template_value):
         """Apply a template value to a control.
-        
+
         Args:
             ctrl: Control to apply template to
             template_value: Template value string

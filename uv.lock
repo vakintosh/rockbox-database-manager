@@ -567,7 +567,7 @@ wheels = [
 
 [[package]]
 name = "rockbox-db-manager"
-version = "0.3.0"
+version = "0.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "mutagen" },
@@ -576,6 +576,10 @@ dependencies = [
     { name = "rich-argparse" },
     { name = "tomli-w" },
     { name = "watchdog" },
+]
+
+[package.optional-dependencies]
+gui = [
     { name = "wxpython" },
 ]
 
@@ -598,8 +602,9 @@ requires-dist = [
     { name = "rich-argparse", specifier = ">=1.7.0" },
     { name = "tomli-w", specifier = ">=1.0.0" },
     { name = "watchdog", specifier = ">=3.0.0" },
-    { name = "wxpython", specifier = ">=4.2.4" },
+    { name = "wxpython", marker = "extra == 'gui'", specifier = ">=4.2.4" },
 ]
+provides-extras = ["gui"]
 
 [package.metadata.requires-dev]
 dev = [

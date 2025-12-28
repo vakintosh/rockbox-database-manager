@@ -2,9 +2,17 @@
 
 This module contains the MyFrame class which coordinates all components
 of the main application window.
+
+Note: This module requires wxPython. It should only be imported when
+wxPython is available (checked via gui.__init__.is_wxpython_available()).
 """
 
-import wx
+try:
+    import wx
+except ImportError as e:
+    raise ImportError(
+        "This module requires wxPython. Install with: pip install rockbox-db-manager[gui]"
+    ) from e
 
 from ...database import Database
 from .. import wxFB_gui

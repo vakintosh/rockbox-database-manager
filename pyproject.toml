@@ -1,6 +1,6 @@
 [project]
 name = "rockbox-db-manager"
-version = "0.3.0"
+version = "0.4.0"
 description = "A Python application for managing Rockbox database files with a wxPython GUI and CLI."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -18,12 +18,16 @@ classifiers = [
 ]
 dependencies = [
     "mutagen>=1.47.0",
-    "wxpython>=4.2.4",
     "tomli-w>=1.0.0",
     "rich>=13.0.0",
     "rich-argparse>=1.7.0",
     "watchdog>=3.0.0",
     "psutil>=5.9.0",
+]
+
+[project.optional-dependencies]
+gui = [
+    "wxpython>=4.2.4",
 ]
 
 [project.scripts]

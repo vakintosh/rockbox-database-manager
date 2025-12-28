@@ -39,7 +39,7 @@ A Python-based utility to accelerate Rockbox library management by generating da
 
 **Tested on:**
 - ✅ macOS Sonoma 14.8.3 (Intel Mac)
-- ✅ maOS Tahoe 26.1 (Apple Silicon Macs)
+- ✅ maOS Tahoe 26.1 (Apple Silicon)
 - 🔄 Linux (in progress)
 - 🔄 Windows (in progress)
 
@@ -47,11 +47,17 @@ A Python-based utility to accelerate Rockbox library management by generating da
 
 ## Requirements
 
+### Core (CLI)
 - **Python**: 3.11 or higher
-- **wxPython**: 4.2.4 or higher (requires framework-enabled Python on macOS)
 - **mutagen**: 1.47.0 or higher
 - **rich**: 13.0.0 or higher (for CLI formatting)
 - **watchdog**: 3.0.0 or higher (for file monitoring)
+
+### Optional (GUI)
+- **wxPython**: 4.2.4 or higher (requires framework-enabled Python on macOS)
+
+> **Note**: wxPython is only needed for the GUI. The CLI tool (`rdbm`) works without it,
+> making it ideal for headless servers or environments where GUI dependencies are problematic.
 
 ---
 
@@ -64,13 +70,16 @@ A Python-based utility to accelerate Rockbox library management by generating da
 git clone https://github.com/vakintosh/rockbox-db-manager.git
 cd rockbox-db-manager
 
-# Sync dependencies (creates virtual environment automatically)
+# Install CLI only (without GUI/wxPython)
 uv sync
 
-# Run the CLI
+# OR: Install with GUI support
+uv sync --extra gui
+
+# Run the CLI (works without wxPython)
 uv run rdbm --help
 
-# Run the GUI
+# Run the GUI (requires wxPython)
 uv run rockbox-db-manager
 ```
 
@@ -85,13 +94,16 @@ cd rockbox-db-manager
 python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-# Install in development mode
+# Install CLI only (without GUI/wxPython)
 pip install -e .
 
-# Run the CLI
+# OR: Install with GUI support
+pip install -e ".[gui]"
+
+# Run the CLI (works without wxPython)
 rdbm --help
 
-# Run the GUI
+# Run the GUI (requires wxPython)
 rockbox-db-manager-gui
 ```
 
@@ -428,7 +440,81 @@ uv run mypy src/
 uv run ruff format src/ tests/
 ```
 
+---
 
+## Troubleshooting
+
+### wxPython Installation Issues
+
+#### Linux: GTK+ Development Files Error
+
+If you encounter this error on Linux:
+```
+configure: error: The development files for GTK+ were not found.
+```
+
+**Solution 1: Use CLI Only (Recommended for Servers)**
+
+The CLI (`rdbm`) works without wxPython. Install without GUI support:
+```bash
+# Using uv
+uv sync
+
+# Using pip
+pip install -e .
+```
+
+**Solution 2: Install GUI Dependencies**
+
+If you need the GUI, install GTK+ development files:
+
+Ubuntu/Debian:
+```bash
+sudo apt-get update
+sudo apt-get install libgtk-3-dev
+```
+
+Fedora/RHEL:
+```bash
+sudo dnf install gtk3-devel
+```
+
+Then install with GUI support:
+```bash
+# Using uv
+uv sync --extra gui
+
+# Using pip
+pip install -e ".[gui]"
+```
+
+#### macOS: Framework Python Required
+
+wxPython requires framework-enabled Python on macOS. If using Homebrew:
+```bash
+brew install python-tk@3.11
+```
+
+#### GUI Won't Start
+
+If the GUI entry point fails with "wxPython is not installed":
+```bash
+# Install with GUI support
+pip install rockbox-db-manager[gui]
+
+# Or in development mode
+pip install -e ".[gui]"
+```
+
+#### Testing Without GUI
+
+Verify the CLI works independently:
+```bash
+rdbm --version
+rdbm generate --help
+```
+
+---
 
 ## Contributing
 

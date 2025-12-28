@@ -9,7 +9,7 @@ Main modules:
     database: Database generation and management
     gui: wxPython GUI application
     tagging: Audio file tag reading and titleformat parsing
-    
+
 Core modules:
     config: Configuration management
     constants: Constants and definitions
@@ -17,7 +17,28 @@ Core modules:
     utils: Utility functions
 """
 
-__version__ = "0.3.0"
+try:
+    try:
+        from importlib.metadata import version, PackageNotFoundError
+    except ImportError:
+        # Python < 3.8
+        from importlib_metadata import version, PackageNotFoundError  # type: ignore
+
+    __version__ = version("rockbox-db-manager")
+except (PackageNotFoundError, ImportError):
+    # Package not installed or importlib.metadata unavailable
+    # Read directly from pyproject.toml
+    try:
+        from pathlib import Path
+        import tomllib  # Python 3.11+ built-in
+
+        pyproject_path = Path(__file__).parent.parent.parent / "pyproject.toml"
+        with open(pyproject_path, "rb") as f:
+            pyproject_data = tomllib.load(f)
+            __version__ = pyproject_data["project"]["version"]
+    except Exception:
+        # Last resort fallback if pyproject.toml can't be read
+        __version__ = "unknown"
 
 __all__ = [
     # Sub-packages
