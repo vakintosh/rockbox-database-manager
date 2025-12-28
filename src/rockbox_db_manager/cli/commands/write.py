@@ -19,10 +19,10 @@ def cmd_write(args: argparse.Namespace) -> None:
     output_path = Path(args.output_path)
 
     if not db_path.exists():
-        logging.error(f"Database path does not exist: {db_path}")
+        logging.error("Database path does not exist: %s", db_path)
         sys.exit(1)
 
-    logging.info(f"Loading database from: {db_path}")
+    logging.info("Loading database from: %s", db_path)
     db = Database.read(
         str(db_path),
         callback=log_callback if logging.getLogger().level <= logging.INFO else None,
@@ -30,7 +30,7 @@ def cmd_write(args: argparse.Namespace) -> None:
 
     output_path.mkdir(parents=True, exist_ok=True)
 
-    logging.info(f"Writing database to: {output_path}")
+    logging.info("Writing database to: %s", output_path)
     db.write(
         str(output_path),
         callback=log_callback if logging.getLogger().level <= logging.INFO else None,

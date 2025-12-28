@@ -79,7 +79,10 @@ class Database:
         self.failed = []
         
         # Parallelization configuration
-        self.max_workers = min(multiprocessing.cpu_count(), 8)  # Cap at 8 workers
+        # Auto-detect optimal worker count based on CPU count (I/O-bound workload)
+        # Formula: min(32, cpu_count + 4) allows for efficient I/O concurrency
+        cpu_count = multiprocessing.cpu_count()
+        self.max_workers = min(32, cpu_count + 4)
         self.use_parallel = True  # Can be toggled via parameters
         
         # Initialize scanner and generator with configured workers

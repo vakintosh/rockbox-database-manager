@@ -24,11 +24,11 @@ def cmd_validate(args: argparse.Namespace) -> None:
     console = Console()
 
     if not db_path.exists():
-        logging.error(f"Database path does not exist: {db_path}")
+        logging.error("Database path does not exist: %s", db_path)
         sys.exit(1)
 
     if not db_path.is_dir():
-        logging.error(f"Database path is not a directory: {db_path}")
+        logging.error("Database path is not a directory: %s", db_path)
         sys.exit(1)
 
     console.print(f"\n[cyan]Validating database:[/cyan] {db_path}\n")

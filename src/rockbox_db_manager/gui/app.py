@@ -7,6 +7,8 @@ import sys
 import wx
 
 from .main_frame import MyFrame
+from ..config import Config
+from ..database.cache import TagCache
 
 
 class MyApp(wx.App):
@@ -24,6 +26,10 @@ class MyApp(wx.App):
 
 def main():
     """Main entry point for the Rockbox Database Manager GUI."""
+    # Initialize cache configuration from user settings
+    config = Config()
+    TagCache.set_max_cache_memory(config.get_tag_cache_memory())
+    
     app = MyApp(redirect=False)
     app.MainLoop()
     # Kill any remaining threads before we're done.

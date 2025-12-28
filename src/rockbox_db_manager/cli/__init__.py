@@ -28,9 +28,11 @@ from .commands import (
     cmd_inspect,
     # cmd_watch,
 )
+from ..config import Config
+from ..database.cache import TagCache
 
 # Version - should match pyproject.toml
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 __all__ = [
     "main",
@@ -65,6 +67,12 @@ def main() -> None:
         # choices=["debug", "info", "warning", "error"],
         default=None,
         help="Set logging level (disabled by default)",
+    )
+    parent_parser.add_argument(
+        "--cache-size",
+        type=int,
+        metavar="SIZE",
+        help="Override tag cache size (default: from config, typically 50000)",
     )
 
     parser = argparse.ArgumentParser(
@@ -268,6 +276,17 @@ def main() -> None:
     else:
         setup_logging("critical")
 
+    # Initialize cache configuration from user settings
+    config = Config()
+    cache_memory = args.cache_size if hasattr(args, 'cache_size') and args.cache_size else config.get_tag_cache_memory()
+    
+    try:
+        TagCache.set_max_cache_memory(cache_memory)
+        logging.debug("Tag cache memory limit set to: %s MB", cache_memory)
+    except ValueError as e:
+        logging.error("Invalid cache memory limit: %s", e)
+        sys.exit(1)
+
     # Execute command
     try:
         args.func(args)
@@ -275,7 +294,7 @@ def main() -> None:
         logging.info("\nOperation cancelled by user")
         sys.exit(130)
     except Exception as e:
-        logging.error(f"Error: {e}", exc_info=args.log_level == "debug")
+        logging.error("Error: %s", e, exc_info=args.log_level == "debug")
         sys.exit(1)
 
 

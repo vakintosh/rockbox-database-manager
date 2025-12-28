@@ -4,7 +4,7 @@ This module handles reading and writing Rockbox database files in the
 TagCache Database (.tcd) format.
 """
 
-import os
+from pathlib import Path
 from typing import Optional, Callable
 
 from ..constants import FILE_TAGS
@@ -25,7 +25,8 @@ class DatabaseIO:
     """Handles reading and writing Rockbox database files."""
     
     # Buffer size for efficient I/O operations
-    BUFFER_SIZE = 8192  # 8KB buffer
+    # Modern systems benefit from larger buffers (256KB provides significant speedup)
+    BUFFER_SIZE = 262144  # 256KB buffer
     
     @classmethod
     def write(cls, tagfiles: dict, index, out_dir: str = '',
@@ -51,16 +52,17 @@ class DatabaseIO:
             callback: Progress callback function
         """
         # Write the tag files with optimized buffering
+        out_path = Path(out_dir) if out_dir else Path.cwd()
         for i, field in enumerate(FILE_TAGS):
-            filename = os.path.join(out_dir, f'database_{i}.tcd')
+            filename = out_path / f'database_{i}.tcd'
             callback(f'Writing {filename} . . .', end='')
-            tagfiles[field].write(filename, buffer_size=cls.BUFFER_SIZE)
+            tagfiles[field].write(str(filename), buffer_size=cls.BUFFER_SIZE)
             callback('done')
 
         # Write the index file with optimized buffering
-        filename = os.path.join(out_dir, 'database_idx.tcd')
+        filename = out_path / 'database_idx.tcd'
         callback(f'Writing {filename} . . .', end='')
-        index.write(filename, buffer_size=cls.BUFFER_SIZE)
+        index.write(str(filename), buffer_size=cls.BUFFER_SIZE)
         callback('done')
     
     @classmethod
@@ -87,18 +89,19 @@ class DatabaseIO:
             Tuple of (tagfiles_dict, index_object)
         """
         tagfiles = {}
+        in_path = Path(in_dir) if in_dir else Path.cwd()
         
         # Read the tag files
         for i, field in enumerate(FILE_TAGS):
-            filename = os.path.join(in_dir, f'database_{i}.tcd')
+            filename = in_path / f'database_{i}.tcd'
             callback(f'Reading {filename} . . .', end='')
-            tagfiles[field] = TagFile.read(filename)
+            tagfiles[field] = TagFile.read(str(filename))
             callback('done')
 
         # Read the index file
-        filename = os.path.join(in_dir, 'database_idx.tcd')
+        filename = in_path / 'database_idx.tcd'
         callback(f'Reading {filename} . . .', end='')
-        index = IndexFile.read(filename, tagfiles)
+        index = IndexFile.read(str(filename), tagfiles)
         callback('done')
 
         return tagfiles, index

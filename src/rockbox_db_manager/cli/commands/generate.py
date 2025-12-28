@@ -24,14 +24,14 @@ def cmd_generate(args: argparse.Namespace) -> None:
     music_path = Path(args.music_path)
 
     if not music_path.exists():
-        logging.error(f"Music path does not exist: {music_path}")
+        logging.error("Music path does not exist: %s", music_path)
         sys.exit(1)
 
     if not music_path.is_dir():
-        logging.error(f"Music path is not a directory: {music_path}")
+        logging.error("Music path is not a directory: %s", music_path)
         sys.exit(1)
 
-    logging.info(f"Generating database from: {music_path}")
+    logging.info("Generating database from: %s", music_path)
 
     # Create database instance
     db = Database()
@@ -43,16 +43,16 @@ def cmd_generate(args: argparse.Namespace) -> None:
     
     if hasattr(args, 'workers') and args.workers:
         db.max_workers = args.workers
-        logging.info(f"Using {args.workers} worker threads")
+        logging.info("Using %s worker threads", args.workers)
 
     # Load configuration if provided
     if args.config:
         config_path = Path(args.config)
         if not config_path.exists():
-            logging.error(f"Config file does not exist: {config_path}")
+            logging.error("Config file does not exist: %s", config_path)
             sys.exit(1)
 
-        logging.info(f"Loading configuration from: {config_path}")
+        logging.info("Loading configuration from: %s", config_path)
         config = Config()
         config.load_config(str(config_path))
 
@@ -72,7 +72,7 @@ def cmd_generate(args: argparse.Namespace) -> None:
                 sort_str = config.get(f"database.{field}_sort")
                 if format_str:
                     db.set_format(field, format_str, sort_str)
-                    logging.debug(f"Set format for {field}: {format_str}")
+                    logging.debug("Set format for %s: %s", field, format_str)
             except KeyError:
                 pass
 
@@ -80,12 +80,12 @@ def cmd_generate(args: argparse.Namespace) -> None:
     if args.load_tags:
         tags_path = Path(args.load_tags)
         if not tags_path.exists():
-            logging.warning(f"Tags file does not exist: {tags_path}")
+            logging.warning("Tags file does not exist: %s", tags_path)
         else:
-            logging.info(f"Loading tags from: {tags_path}")
+            logging.info("Loading tags from: %s", tags_path)
             db.load_tags(str(tags_path), callback=log_callback)
             tag_cache = TagCache.get_cache()
-            logging.info(f"Loaded {len(tag_cache)} cached tags")
+            logging.info("Loaded %s cached tags", len(tag_cache))
     else:
         # Clear any stale cache from previous operations
         TagCache.clear()
@@ -117,11 +117,11 @@ def cmd_generate(args: argparse.Namespace) -> None:
     console.print(f"\n[green]✓[/green] Scanned {total_files} files ({failed_files} failed)")
 
     if failed_files > 0:
-        logging.warning(f"Failed to read {failed_files} files:")
+        logging.warning("Failed to read %s files:", failed_files)
         for failed in db.failed[:10]:  # Show first 10
-            logging.warning(f"  - {failed}")
+            logging.warning("  - %s", failed)
         if failed_files > 10:
-            logging.warning(f"  ... and {failed_files - 10} more")
+            logging.warning("  ... and %s more", failed_files - 10)
 
     # Save tags to cache if requested
     if args.save_tags:
@@ -207,9 +207,9 @@ def cmd_generate(args: argparse.Namespace) -> None:
     
     # Log failed files if any
     if db.failed:
-        logging.warning(f"Failed to read tags from {len(db.failed)} files")
+        logging.warning("Failed to read tags from %s files", len(db.failed))
         if logging.getLogger().level <= logging.DEBUG:
             for failed_file in db.failed[:10]:  # Show first 10
-                logging.debug(f"  Failed: {failed_file}")
+                logging.debug("  Failed: %s", failed_file)
     
     console.print(table)

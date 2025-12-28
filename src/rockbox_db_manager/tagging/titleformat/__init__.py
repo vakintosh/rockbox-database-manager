@@ -16,10 +16,11 @@ Modules:
     utils.py: Utility functions for parsing
 
 Main functions:
-    compile(format_string): Parse format string into Statement object
+    compile(format_string): Parse format string into Statement object (memoized)
     format(format_string, tags): Format tags using format string
 """
 
+import functools
 from . import statement
 from .statement import Statement as Statement
 from .conditional import Conditional as Conditional
@@ -28,6 +29,7 @@ from .string import String as String
 from .function import Function
 
 
+@functools.lru_cache(maxsize=512)
 def compile(format_string):
     """Compile a format string into a Statement object.
     

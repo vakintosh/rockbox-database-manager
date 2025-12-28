@@ -3,7 +3,7 @@
 This module provides error dialogs and validation functions for user input.
 """
 
-import os
+from pathlib import Path
 from typing import Optional
 
 import wx
@@ -57,14 +57,15 @@ def validate_path(path: str, must_exist: bool = True) -> tuple[bool, str]:
         return False, "Path cannot be empty"
 
     path = path.strip()
+    path_obj = Path(path)
 
-    if must_exist and not os.path.exists(path):
+    if must_exist and not path_obj.exists():
         return False, f"Path does not exist: {path}"
 
     # Check if parent directory exists for output paths
     if not must_exist:
-        parent = os.path.dirname(path)
-        if parent and not os.path.exists(parent):
+        parent = path_obj.parent
+        if parent and not parent.exists():
             return False, f"Parent directory does not exist: {parent}"
 
     return True, ""

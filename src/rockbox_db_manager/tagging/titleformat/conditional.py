@@ -10,10 +10,10 @@ def parse(format):
     
     """
     # Local import to break the circle
-    from . import statements
+    from . import statement
 
     assert format.startswith('['), 'Missing starting square bracket'
-    tf, length = statements.parse(format[1:], end_chars=']')
+    tf, length = statement.parse(format[1:], end_chars=']')
     return Conditional(tf), length + 2 # two []
 
 class Conditional(Statement):

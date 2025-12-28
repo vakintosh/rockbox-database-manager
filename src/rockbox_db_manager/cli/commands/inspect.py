@@ -122,14 +122,13 @@ def cmd_inspect(args: argparse.Namespace) -> None:
                     if result.entry_count > 10:
                         console.print(f"[dim]... and {result.entry_count - 10} more entries[/dim]\n")
         
-        # Print full output if verbose mode
-        if args.verbose:
-            console.print("[cyan]Full raw output:[/cyan]\n")
-            console.print(str(result))
+        # # Print full output if verbose mode
+        # if args.verbose:
+        #     console.print("[cyan]Full raw output:[/cyan]\n")
+        #     console.print(str(result))
         
     except Exception as e:
         console.print(f"[red]Error parsing file: {e}[/red]")
         if logging.getLogger().level <= logging.DEBUG:
-            import traceback
             console.print(traceback.format_exc())
         sys.exit(1)

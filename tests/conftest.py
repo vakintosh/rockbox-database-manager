@@ -1,14 +1,24 @@
 """Pytest configuration and fixtures."""
 
 import sys
-import os
+from pathlib import Path
 import pytest
 
 from rockbox_db_manager.database import Database
 from rockbox_db_manager.tagging.tag.tagfile import TagFile, TagEntry
 
 # Add src directory to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
+
+
+def pytest_addoption(parser):
+    """Add custom command line options."""
+    parser.addoption(
+        "--update-baselines",
+        action="store_true",
+        default=False,
+        help="Update performance baselines instead of comparing"
+    )
 
 
 @pytest.fixture

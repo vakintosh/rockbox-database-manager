@@ -62,7 +62,7 @@ class IndexFile:
         Args:
             filename: Path to write the index file
             buffer_size: Optional buffer size in bytes. If None, uses system default.
-                        Recommended: 8192 (8KB) for optimal performance.
+                        Recommended: 262144 (256KB) for optimal performance on modern systems.
         """
         if buffer_size is not None:
             with open(filename, 'wb', buffering=buffer_size) as f:

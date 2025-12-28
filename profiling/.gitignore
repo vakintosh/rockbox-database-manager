@@ -1,0 +1,7 @@
+# Profiling artifacts
+*.prof
+*.lprof
+*.stats
+.benchmarks/
+.performance_baselines.json
+flamegraph.svg

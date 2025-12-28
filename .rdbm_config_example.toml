@@ -33,6 +33,12 @@ y = -1
 
 
 # -----------------------------------------------------------------------------
+# Performance Settings
+# -----------------------------------------------------------------------------
+These settings control performance-related options.
+tag_cache_size = 50000  # Adjust based on your library size and RAM
+
+# -----------------------------------------------------------------------------
 # Path Settings
 # -----------------------------------------------------------------------------
 # Recently used directories for convenience. The application will remember

@@ -35,14 +35,23 @@ def myprint(*args, **kwargs):
 class DatabaseGenerator:
     """Handles database generation from cached tags with parallel processing."""
     
-    def __init__(self, max_workers: int = 8):
+    def __init__(self, max_workers: Optional[int] = None):
         """Initialize the database generator.
         
         Args:
-            max_workers: Maximum number of parallel workers
+            max_workers: Maximum number of parallel workers.
+                        If None, auto-detects based on CPU count (recommended).
         """
+        if max_workers is None:
+            # For mixed I/O and CPU-bound operations, use moderate worker count
+            # Formula: min(32, (cpu_count or 1) + 4)
+            max_workers = min(32, (os.cpu_count() or 1) + 4)
         self.max_workers = max_workers
         self._lock = Lock()
+        
+        # Persistent thread pool - reused across operations for better performance
+        self._executor = ThreadPoolExecutor(max_workers=self.max_workers)
+        self._shutdown = False
     
     def generate(self, paths: set, formats: Dict[str, Tuple], tagfiles: dict,
                  index, use_parallel: bool = True,
@@ -124,8 +133,13 @@ class DatabaseGenerator:
 
 
             # Remove drive letter and convert to Unix-style path for Rockbox
-            clean_path = os.path.splitdrive(path)[1]
-            clean_path = clean_path.replace(os.sep, '/')
+            # Use pathlib to handle path components, then convert to Unix-style
+            from pathlib import PureWindowsPath, PurePosixPath
+            path_obj = PureWindowsPath(path) if ':' in path else PurePosixPath(path)
+            # Get path without drive (anchor) and convert to POSIX
+            clean_path = str(PurePosixPath(*path_obj.parts[1:] if path_obj.anchor else path_obj.parts))
+            if not clean_path.startswith('/'):
+                clean_path = '/' + clean_path
 
             if callback and i % batch_size == 0:
                 callback(i, total_paths)
@@ -153,12 +167,18 @@ class DatabaseGenerator:
                 except KeyError:
                     # File not in cache - skip it (should not happen if cache is up to date)
                     # This occurs when scanning a folder that wasn't included in the tag cache
-                    logging.warning(f"File not in cache, skipping: {path}")
+                    logging.warning("File not in cache, skipping: %s", path)
                     continue
 
                 try:
-                    clean_path = os.path.splitdrive(path)[1]
-                    clean_path = clean_path.replace(os.sep, '/')
+                    # Remove drive letter and convert to Unix-style path for Rockbox
+                    # Use pathlib to handle path components, then convert to Unix-style
+                    from pathlib import PureWindowsPath, PurePosixPath
+                    path_obj = PureWindowsPath(path) if ':' in path else PurePosixPath(path)
+                    # Get path without drive (anchor) and convert to POSIX
+                    clean_path = str(PurePosixPath(*path_obj.parts[1:] if path_obj.anchor else path_obj.parts))
+                    if not clean_path.startswith('/'):
+                        clean_path = '/' + clean_path
                     
                     # Create entry data
                     entry_data = {
@@ -169,7 +189,7 @@ class DatabaseGenerator:
                     batch_results.append(entry_data)
                 except Exception as e:
                     # Skip problematic entries but log the error
-                    logging.debug(f"Skipped entry {path} due to processing error: {e}")
+                    logging.debug("Skipped entry %s due to processing error: %s", path, e)
                     pass
             return batch_results
         
@@ -177,23 +197,55 @@ class DatabaseGenerator:
         batches = [sorted_paths[i:i + batch_size] 
                   for i in range(0, total_paths, batch_size)]
         
-        # Process batches with thread pool
-        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            futures = {executor.submit(process_batch, batch): batch 
-                      for batch in batches}
+        # Process batches with persistent thread pool
+        if self._shutdown:
+            # Pool has been shut down, fall back to sequential processing
+            logging.warning("Thread pool shut down, falling back to sequential processing")
+            self._generate_sequential(sorted_paths, formats, tagfiles, 
+                                     index, multiple_fields, callback, batch_size)
+            return
+        
+        futures = {self._executor.submit(process_batch, batch): batch 
+                  for batch in batches}
+        
+        for future in as_completed(futures):
+            batch_results = future.result()
             
-            for future in as_completed(futures):
-                batch_results = future.result()
-                
-                # Process results sequentially to maintain data structure integrity
-                with self._lock:
-                    for entry_data in batch_results:
-                        self._process_entry(entry_data, formats, tagfiles, 
-                                          index, multiple_fields)
-                        processed += 1
-                
-                if callback:
-                    callback(processed, total_paths)
+            # Process results sequentially to maintain data structure integrity
+            with self._lock:
+                for entry_data in batch_results:
+                    self._process_entry(entry_data, formats, tagfiles, 
+                                      index, multiple_fields)
+                    processed += 1
+            
+            if callback:
+                callback(processed, total_paths)
+    
+    def shutdown(self, wait: bool = True) -> None:
+        """Shutdown the persistent thread pool.
+        
+        Args:
+            wait: If True, wait for all pending tasks to complete before shutting down
+        """
+        if not self._shutdown:
+            self._shutdown = True
+            self._executor.shutdown(wait=wait)
+    
+    def __del__(self):
+        """Cleanup thread pool on object destruction."""
+        try:
+            self.shutdown(wait=False)
+        except Exception:
+            pass  # Ignore errors during cleanup
+    
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit - shutdown pool."""
+        self.shutdown(wait=True)
+        return False
     
     def _process_entry(self, entry_data: dict, formats: dict, tagfiles: dict,
                       index, multiple_fields: dict) -> None:

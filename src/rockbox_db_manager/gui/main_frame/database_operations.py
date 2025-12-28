@@ -4,7 +4,7 @@ This module contains all the event handlers for database operations
 like loading, saving, generating, reading, and writing databases.
 """
 
-import os
+from pathlib import Path
 import wx
 
 from ..error_handling import show_error_dialog, validate_path
@@ -32,7 +32,7 @@ class DatabaseOperations:
         """
         default_dir = self.frame.config.get_last_tags_file()
         if default_dir:
-            default_dir = os.path.dirname(default_dir)
+            default_dir = str(Path(default_dir).parent)
 
         filename = wx.FileSelector(
             "Load Tags", default_path=default_dir or "", default_extension=".pkl"
@@ -197,8 +197,13 @@ class DatabaseOperations:
                 evt.info.SetRange(count)
                 evt.info.gauge = 0
                 evt.info.status = "Processing files..."
+            elif isinstance(evt.message, int):
+                # Integer message - set range or update gauge
+                evt.info.SetRange(evt.message)
+                evt.info.gauge = 0
             else:
-                evt.info.status = evt.message
+                # String message - update status
+                evt.info.status = str(evt.message)
                 evt.info.gauge += 1
 
         def OnEnd(evt):
@@ -252,7 +257,7 @@ class DatabaseOperations:
 
         # Create directory if it doesn't exist
         try:
-            os.makedirs(write_dir, exist_ok=True)
+            Path(write_dir).mkdir(parents=True, exist_ok=True)
         except OSError as e:
             show_error_dialog(
                 self.frame, "Directory Creation Failed", f"Could not create directory: {e}"

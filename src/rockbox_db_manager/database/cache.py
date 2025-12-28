@@ -47,12 +47,15 @@ class TagCache:
     The tag cache is shared between Database instances and uses an
     OrderedDict for efficient LRU (Least Recently Used) cache eviction.
     Supports compressed pickle storage with minimal memory footprint.
+    Uses memory-based limits to prevent OOM issues.
     """
     
     # Shared cache across all instances
     _cache = OrderedDict()
-    MAX_CACHE_SIZE = 50000  # Maximum number of entries to keep in cache
+    MAX_CACHE_MEMORY_MB = 512  # Maximum memory usage in MB (default: 512MB)
     _auto_trim = True  # Control automatic trimming during adds
+    _memory_tracking_enabled = True  # Enable memory-based limits
+    _current_memory_bytes = 0  # Estimated current memory usage
     
     @classmethod
     def get_cache(cls):
@@ -60,10 +63,96 @@ class TagCache:
         return cls._cache
     
     @classmethod
+    def set_max_cache_memory(cls, memory_mb: int) -> None:
+        """Set the maximum cache memory usage.
+        
+        Args:
+            memory_mb: Maximum memory in megabytes (minimum: 100MB)
+            
+        Raises:
+            ValueError: If memory_mb is less than 100
+        """
+        if memory_mb < 100:
+            raise ValueError("Cache memory must be at least 100 MB")
+        cls.MAX_CACHE_MEMORY_MB = memory_mb
+        # Trim cache if it now exceeds the new limit
+        if cls._memory_tracking_enabled:
+            cls._check_memory_and_trim()
+    
+    @classmethod
+    def get_max_cache_memory(cls) -> int:
+        """Get the current maximum cache memory in MB.
+        
+        Returns:
+            Maximum memory in megabytes
+        """
+        return cls.MAX_CACHE_MEMORY_MB
+    
+    @classmethod
+    def get_current_memory_usage(cls) -> tuple:
+        """Get current memory usage of the cache.
+        
+        Returns:
+            Tuple of (bytes, megabytes, entry_count)
+        """
+        if not cls._memory_tracking_enabled:
+            # Recalculate if tracking was disabled
+            cls._recalculate_memory_usage()
+        
+        memory_mb = cls._current_memory_bytes / (1024 * 1024)
+        return (cls._current_memory_bytes, memory_mb, len(cls._cache))
+    
+    @classmethod
+    def set_memory_tracking(cls, enabled: bool) -> None:
+        """Enable or disable memory tracking.
+        
+        Args:
+            enabled: True to enable memory tracking, False to disable
+        """
+        cls._memory_tracking_enabled = enabled
+        if enabled:
+            cls._recalculate_memory_usage()
+    
+    @classmethod
     def clear(cls):
         """Clear all entries from the cache."""
         cls._cache.clear()
+        cls._current_memory_bytes = 0
         gc.collect()  # Free memory
+    
+    @classmethod
+    def _recalculate_memory_usage(cls) -> None:
+        """Recalculate total memory usage of the cache."""
+        cls._current_memory_bytes = sum(
+            cls._get_estimated_entry_size(value) 
+            for value in cls._cache.values()
+        )
+    
+    @classmethod
+    def _check_memory_and_trim(cls) -> None:
+        """Check if memory limit is exceeded and trim if necessary."""
+        if not cls._memory_tracking_enabled:
+            return
+        
+        max_bytes = cls.MAX_CACHE_MEMORY_MB * 1024 * 1024
+        if cls._current_memory_bytes > max_bytes:
+            # Trim to 80% of memory limit
+            target_bytes = int(max_bytes * 0.8)
+            removed = 0
+            
+            while cls._current_memory_bytes > target_bytes and cls._cache:
+                # Remove oldest item (LRU)
+                _, value = cls._cache.popitem(last=False)
+                entry_size = cls._get_estimated_entry_size(value)
+                cls._current_memory_bytes -= entry_size
+                removed += 1
+            
+            if removed > 0:
+                logging.debug("Trimmed %d entries due to memory limit (%.1f MB -> %.1f MB)",
+                            removed, 
+                            (cls._current_memory_bytes + removed * 1024) / (1024 * 1024),
+                            cls._current_memory_bytes / (1024 * 1024))
+                gc.collect()
     
     @classmethod
     def set_auto_trim(cls, enabled: bool) -> None:
@@ -73,6 +162,24 @@ class TagCache:
             enabled: True to enable auto-trim, False to disable
         """
         cls._auto_trim = enabled
+    
+    @staticmethod
+    def _get_estimated_entry_size(value: Any) -> int:
+        """Estimate memory size of a cache entry in bytes.
+        
+        Args:
+            value: Cache value (tuple of metadata and tags)
+            
+        Returns:
+            Estimated size in bytes
+        """
+        try:
+            # Rough estimation: size of pickled data is good approximation
+            # Add overhead for dict/tuple structures (~200 bytes per entry)
+            return len(pickle.dumps(value, protocol=pickle.HIGHEST_PROTOCOL)) + 200
+        except Exception:
+            # Fallback: assume ~1KB per entry if pickle fails
+            return 1024
     
     @staticmethod
     def extract_essential_tags(tag_obj: Any) -> Optional[dict]:
@@ -170,9 +277,10 @@ class TagCache:
                         cls._cache[lowerpath] = ((size, mtime), restored_tags)
                         paths_set.add(lowerpath)
                 
-                # Trim cache once at the end if needed, not on every file
-                if len(cls._cache) > cls.MAX_CACHE_SIZE:
-                    cls.trim()
+                # Recalculate memory usage after bulk load and trim if needed
+                if cls._memory_tracking_enabled:
+                    cls._recalculate_memory_usage()
+                    cls._check_memory_and_trim()
         except (OSError, IOError):
             pass
     
@@ -202,7 +310,7 @@ class TagCache:
             if missing_count > 0:
                 logging.warning(
                     f"Cache trimmed during scan: {missing_count} files not in cache. "
-                    f"Consider increasing MAX_CACHE_SIZE (current: {cls.MAX_CACHE_SIZE}) "
+                    f"Consider increasing MAX_CACHE_MEMORY_MB (current: {cls.MAX_CACHE_MEMORY_MB} MB) "
                     f"or disabling auto-trim during scan."
                 )
             if callback:
@@ -231,6 +339,9 @@ class TagCache:
             # Remove entries not in keep_paths
             keys_to_remove = [k for k in cls._cache if k not in keep_paths]
             for key in keys_to_remove:
+                if cls._memory_tracking_enabled:
+                    entry_size = cls._get_estimated_entry_size(cls._cache[key])
+                    cls._current_memory_bytes -= entry_size
                 del cls._cache[key]
             
             # Force garbage collection to free memory immediately
@@ -239,16 +350,31 @@ class TagCache:
     
     @classmethod
     def trim(cls) -> None:
-        """Trim cache to 80% of MAX_CACHE_SIZE by removing least recently used 20% of entries.
+        """Trim cache to 80% of MAX_CACHE_MEMORY_MB by removing least recently used entries.
         
-        This is called when cache exceeds MAX_CACHE_SIZE to prevent unbounded growth.
+        This is called when cache exceeds memory limit to prevent unbounded growth.
         Uses LRU (Least Recently Used) eviction strategy with OrderedDict.
         """
-        if len(cls._cache) > cls.MAX_CACHE_SIZE:
-            remove_count = len(cls._cache) // 5  # Remove 20%
-            # Remove oldest entries (LRU) - first items in OrderedDict
-            for _ in range(remove_count):
-                cls._cache.popitem(last=False)  # Remove from beginning (oldest)
+        if not cls._memory_tracking_enabled:
+            # If tracking disabled, can't trim based on memory
+            return
+        
+        max_bytes = cls.MAX_CACHE_MEMORY_MB * 1024 * 1024
+        if cls._current_memory_bytes > max_bytes:
+            target_bytes = int(max_bytes * 0.8)
+            removed = 0
+            
+            while cls._current_memory_bytes > target_bytes and cls._cache:
+                _, value = cls._cache.popitem(last=False)
+                entry_size = cls._get_estimated_entry_size(value)
+                cls._current_memory_bytes -= entry_size
+                removed += 1
+            
+            if removed > 0:
+                logging.debug("Trimmed %d entries to 80%% of memory limit (%.1f MB -> %.1f MB)",
+                            removed,
+                            (cls._current_memory_bytes + removed * 1024) / (1024 * 1024),
+                            cls._current_memory_bytes / (1024 * 1024))
             gc.collect()
     
     @classmethod
@@ -276,6 +402,15 @@ class TagCache:
             key: Cache key
             value: Value to cache (tuple of (size, mtime), tags)
         """
+        # Track if this is a new entry or update
+        is_new = key not in cls._cache
+        old_size = 0
+        
+        if not is_new and cls._memory_tracking_enabled:
+            # Subtract old entry size before replacing
+            old_size = cls._get_estimated_entry_size(cls._cache[key])
+            cls._current_memory_bytes -= old_size
+        
         # If value is a tuple with tags, wrap the tags in SimpleTag
         if isinstance(value, tuple) and len(value) == 2:
             metadata, tags = value
@@ -285,9 +420,15 @@ class TagCache:
                 value = (metadata, tags)
         
         cls._cache[key] = value
-        # Check cache size and trim if needed (only if auto_trim is enabled)
-        if cls._auto_trim and len(cls._cache) > cls.MAX_CACHE_SIZE:
-            cls.trim()
+        
+        # Update memory tracking
+        if cls._memory_tracking_enabled:
+            entry_size = cls._get_estimated_entry_size(value)
+            cls._current_memory_bytes += entry_size
+        
+        # Check memory-based limit and trim if needed (only if auto_trim is enabled)
+        if cls._auto_trim and cls._memory_tracking_enabled:
+            cls._check_memory_and_trim()
     
     @classmethod
     def contains(cls, key: str) -> bool:

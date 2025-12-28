@@ -74,11 +74,11 @@ def cmd_watch(args: argparse.Namespace) -> None:
     music_path = Path(args.music_path)
 
     if not music_path.exists():
-        logging.error(f"Music path does not exist: {music_path}")
+        logging.error("Music path does not exist: %s", music_path)
         sys.exit(1)
 
     if not music_path.is_dir():
-        logging.error(f"Music path is not a directory: {music_path}")
+        logging.error("Music path is not a directory: %s", music_path)
         sys.exit(1)
 
     # Determine output path
@@ -106,7 +106,7 @@ def cmd_watch(args: argparse.Namespace) -> None:
         console.print("\n[green]✓[/green] Initial database generation complete\n")
         console.print("[bold cyan]👀 Now watching for changes...[/bold cyan]\n")
     except Exception as e:
-        logging.error(f"Failed to generate initial database: {e}")
+        logging.error("Failed to generate initial database: %s", e)
         sys.exit(1)
 
     # Set up file system watcher
@@ -131,7 +131,7 @@ def cmd_watch(args: argparse.Namespace) -> None:
                     console.print("[bold cyan]👀 Continuing to watch for changes...[/bold cyan]\n")
                 except Exception as e:
                     console.print(f"[red]✗ Error regenerating database: {e}[/red]")
-                    logging.error(f"Database regeneration failed: {e}", exc_info=True)
+                    logging.error("Database regeneration failed: %s", e, exc_info=True)
                     console.print("[bold cyan]👀 Continuing to watch for changes...[/bold cyan]\n")
     
     except KeyboardInterrupt:
