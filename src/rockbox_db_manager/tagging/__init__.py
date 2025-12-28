@@ -14,11 +14,12 @@ Sub-packages:
 Main exports:
     read: Read audio file tags
     Tag: Tag manipulation class
-    File: Alias for read() function
+    TagFile: Tag file structure class
+    TagEntry: Tag entry class
     format: Format tags using titleformat strings
 """
 
-__all__ = ["tag", "titleformat", "read", "format", "Tag"]
+__all__ = ["tag", "titleformat", "read", "format", "Tag", "TagFile", "TagEntry"]
 
-from .tag import read, Tag
+from .tag import read, Tag, TagFile, TagEntry
 from .titleformat import format

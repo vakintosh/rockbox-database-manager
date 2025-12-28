@@ -26,7 +26,7 @@ from .commands import (
     cmd_validate,
     cmd_write,
     cmd_inspect,
-    # cmd_watch,
+    cmd_watch,
 )
 from ..config import Config
 from ..database.cache import TagCache
@@ -41,13 +41,16 @@ __all__ = [
     "cmd_validate",
     "cmd_write",
     "cmd_inspect",
-    # "cmd_watch",
+    "cmd_watch",
     "setup_logging",
 ]
 
+
 class RichRawHelpFormatter(RichHelpFormatter, argparse.RawDescriptionHelpFormatter):
     """Combines Rich formatting with the ability to keep line breaks (Raw)."""
+
     pass
+
 
 def main() -> None:
     """Main CLI entry point."""
@@ -278,8 +281,12 @@ def main() -> None:
 
     # Initialize cache configuration from user settings
     config = Config()
-    cache_memory = args.cache_size if hasattr(args, 'cache_size') and args.cache_size else config.get_tag_cache_memory()
-    
+    cache_memory = (
+        args.cache_size
+        if hasattr(args, "cache_size") and args.cache_size
+        else config.get_tag_cache_memory()
+    )
+
     try:
         TagCache.set_max_cache_memory(cache_memory)
         logging.debug("Tag cache memory limit set to: %s MB", cache_memory)

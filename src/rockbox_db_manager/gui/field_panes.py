@@ -6,6 +6,7 @@ through the database by genre, artist, album, and title.
 
 import wx
 import wx.lib.newevent
+from typing import Any
 
 from . import wxFB_gui
 
@@ -24,7 +25,7 @@ class DatabaseEvent:
     @staticmethod
     def post_updated(obj, database):
         """Post a database updated event.
-        
+
         Args:
             obj: Object to post event to
             database: Updated database instance
@@ -38,7 +39,7 @@ class FieldPane(wxFB_gui.FieldPane):
 
     def __init__(self, parent):
         """Initialize the field pane.
-        
+
         Args:
             parent: Parent window
         """
@@ -53,7 +54,7 @@ class FieldPane(wxFB_gui.FieldPane):
             self.PostEvent("<All>")
             return
 
-        values = {}
+        values: dict[str, Any] = {}
         for entry in self.entries:
             value = entry[self.field]
             if value not in values:
@@ -68,15 +69,15 @@ class FieldPane(wxFB_gui.FieldPane):
                 return (0, v.lower())
             else:
                 return (1, v)
-        
-        values = sorted(values.keys(), key=sort_key)
-        self.listbox.Set(["<All>"] + values)
+
+        sorted_values = sorted(values.keys(), key=sort_key)
+        self.listbox.Set(["<All>"] + sorted_values)
         self.listbox.SetSelection(0)
         self.PostEvent("<All>")
 
     def PostEvent(self, selection):
         """Post a field pane selection event.
-        
+
         Args:
             selection: Selected value
         """
@@ -85,7 +86,7 @@ class FieldPane(wxFB_gui.FieldPane):
 
     def SetEntries(self, entries):
         """Set the entries to display.
-        
+
         Args:
             entries: List of database entries
         """
@@ -94,7 +95,7 @@ class FieldPane(wxFB_gui.FieldPane):
 
     def SetField(self, field):
         """Set the field to display.
-        
+
         Args:
             field: Field name
         """
@@ -104,7 +105,7 @@ class FieldPane(wxFB_gui.FieldPane):
 
     def OnFieldChange(self, evt):
         """Handle field selection change.
-        
+
         Args:
             evt: Choice selection event
         """
@@ -113,7 +114,7 @@ class FieldPane(wxFB_gui.FieldPane):
 
     def OnListSelect(self, evt):
         """Handle list selection change.
-        
+
         Args:
             evt: List selection event
         """
@@ -125,7 +126,7 @@ class FieldPanePanel(wx.Panel):
 
     def __init__(self, parent):
         """Initialize the field pane panel.
-        
+
         Args:
             parent: Parent window
         """
@@ -171,7 +172,7 @@ class FieldPanePanel(wx.Panel):
 
     def OnFieldChange(self, evt):
         """Handle field selection change to update tagnavi line.
-        
+
         Args:
             evt: Choice selection event (can be None)
         """
@@ -198,7 +199,7 @@ class FieldPanePanel(wx.Panel):
 
     def OnDatabaseUpdate(self, evt):
         """Handle database update event.
-        
+
         Args:
             evt: Database update event
         """
@@ -207,7 +208,7 @@ class FieldPanePanel(wx.Panel):
 
     def SetDatabase(self, database):
         """Set the database to browse.
-        
+
         Args:
             database: Database instance
         """
@@ -216,13 +217,14 @@ class FieldPanePanel(wx.Panel):
 
     def OnPaneSelect(self, pane_number):
         """Create event handler for pane selection.
-        
+
         Args:
             pane_number: Index of the pane
-            
+
         Returns:
             Event handler function
         """
+
         def func(evt):
             field = evt.pane.field
             entries = evt.pane.entries

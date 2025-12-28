@@ -5,6 +5,14 @@ background workers and the GUI thread.
 """
 
 import wx
+from typing import Any, Optional
+
+
+class EventData:
+    """Container for event data passed to handlers."""
+
+    info: Optional[Any] = None
+    message: Optional[Any] = None
 
 
 class ThreadHandlers:
@@ -12,7 +20,7 @@ class ThreadHandlers:
 
     def __init__(self, frame):
         """Initialize thread handlers.
-        
+
         Args:
             frame: The MyFrame instance
         """
@@ -20,7 +28,7 @@ class ThreadHandlers:
 
     def on_thread_start(self, evt):
         """Handle thread start event.
-        
+
         Args:
             evt: Thread start event
         """
@@ -28,9 +36,6 @@ class ThreadHandlers:
             # Extract data from event to avoid using deleted event object
             handler = evt._handler
             info = evt.info if hasattr(evt, "info") else None
-
-            class EventData:
-                pass
 
             event_data = EventData()
             event_data.info = info
@@ -40,7 +45,7 @@ class ThreadHandlers:
 
     def on_thread_message(self, evt):
         """Handle thread message/callback event.
-        
+
         Args:
             evt: Thread callback event
         """
@@ -49,9 +54,6 @@ class ThreadHandlers:
             handler = evt._handler
             info = evt.info if hasattr(evt, "info") else None
             message = evt.message if hasattr(evt, "message") else None
-
-            class EventData:
-                pass
 
             event_data = EventData()
             event_data.info = info
@@ -62,7 +64,7 @@ class ThreadHandlers:
 
     def on_thread_end(self, evt):
         """Handle thread end event.
-        
+
         Args:
             evt: Thread end event
         """
@@ -72,9 +74,6 @@ class ThreadHandlers:
             info = evt.info if hasattr(evt, "info") else None
 
             # Create a simple container for the info
-            class EventData:
-                pass
-
             event_data = EventData()
             event_data.info = info
 

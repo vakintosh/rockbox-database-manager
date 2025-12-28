@@ -14,7 +14,7 @@ from .load import cmd_load
 from .validate import cmd_validate
 from .write import cmd_write
 from .inspect import cmd_inspect
-# from .watch import cmd_watch
+from .watch import cmd_watch
 
 __all__ = [
     "cmd_generate",
@@ -22,5 +22,5 @@ __all__ = [
     "cmd_validate",
     "cmd_write",
     "cmd_inspect",
-    # "cmd_watch",
+    "cmd_watch",
 ]

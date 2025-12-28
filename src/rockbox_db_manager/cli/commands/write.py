@@ -25,7 +25,7 @@ def cmd_write(args: argparse.Namespace) -> None:
     logging.info("Loading database from: %s", db_path)
     db = Database.read(
         str(db_path),
-        callback=log_callback if logging.getLogger().level <= logging.INFO else None,
+        callback=log_callback if logging.getLogger().level <= logging.INFO else None,  # type: ignore[arg-type]
     )
 
     output_path.mkdir(parents=True, exist_ok=True)

@@ -7,39 +7,43 @@ window positions, and last used directories.
 import copy
 import tomllib
 from pathlib import Path
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, TYPE_CHECKING
 
-try:
+if TYPE_CHECKING:
+    import psutil as psutil_module
     import tomli_w
-except ImportError:
-    tomli_w = None  # type: ignore
+else:
+    try:
+        import psutil as psutil_module
+    except ImportError:
+        psutil_module = None
 
-try:
-    import psutil
-except ImportError:
-    psutil = None  # type: ignore
+    try:
+        import tomli_w
+    except ImportError:
+        tomli_w = None
 
 
 def get_optimal_cache_memory_mb() -> int:
     """Calculate optimal cache memory based on available system RAM.
-    
+
     Formula:
     - Systems with < 4GB RAM: 256 MB (conservative)
     - Systems with 4-8GB RAM: 512 MB (balanced)
     - Systems with 8-16GB RAM: 1024 MB (generous)
     - Systems with > 16GB RAM: 2048 MB (maximum performance)
-    
+
     Returns:
         Optimal cache memory in megabytes
     """
-    if psutil is None:
+    if psutil_module is None:
         # Fallback if psutil not available
         return 512
-    
+
     try:
         # Get total system memory in MB
-        total_ram_mb = psutil.virtual_memory().total / (1024 * 1024)
-        
+        total_ram_mb = psutil_module.virtual_memory().total / (1024 * 1024)
+
         # Calculate based on tiers
         if total_ram_mb < 4096:  # < 4GB
             return 256
@@ -116,7 +120,9 @@ class Config:
     def __init__(self):
         """Initialize configuration manager."""
         self.config_path = get_config_path()
-        self.data: Dict[str, Any] = copy.deepcopy(self.DEFAULT_CONFIG)  # Deep copy to avoid modifying class default
+        self.data: Dict[str, Any] = copy.deepcopy(
+            self.DEFAULT_CONFIG
+        )  # Deep copy to avoid modifying class default
         self._dirty = False  # Track if config has been modified
         self.load()
 
@@ -142,7 +148,7 @@ class Config:
 
     def save(self, force: bool = False) -> bool:
         """Save configuration to file.
-        
+
         Args:
             force: If True, save even if config hasn't been modified
 
@@ -152,14 +158,16 @@ class Config:
         if not force and not self._dirty:
             # No changes to save
             return True
-        
+
         if tomli_w is None:
             print("Warning: TOML writer not available, config not saved")
             return False
 
         try:
+            # Filter out None values that TOML can't serialize
+            config_to_save = self._filter_none_values(self.data)
             with open(self.config_path, "wb") as f:
-                tomli_w.dump(self.data, f)
+                tomli_w.dump(config_to_save, f)
             self._dirty = False  # Clear dirty flag after successful save
             return True
         except Exception as e:
@@ -173,10 +181,28 @@ class Config:
                 self._merge_config(base[key], value)
             else:
                 base[key] = value
-    
+
+    def _filter_none_values(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Recursively filter out None values from config dict for TOML serialization.
+
+        TOML doesn't support None/null values, so we filter them out.
+        When loading, missing values will revert to defaults.
+        """
+        filtered = {}
+        for key, value in data.items():
+            if value is None:
+                continue
+            elif isinstance(value, dict):
+                filtered_dict = self._filter_none_values(value)
+                if filtered_dict:  # Only include non-empty dicts
+                    filtered[key] = filtered_dict
+            else:
+                filtered[key] = value
+        return filtered
+
     def is_dirty(self) -> bool:
         """Check if configuration has been modified.
-        
+
         Returns:
             True if config has unsaved changes, False otherwise
         """
@@ -206,7 +232,7 @@ class Config:
     # Path settings
     def get_last_music_dir(self) -> str:
         """Get last used music directory."""
-        return self.data["paths"]["last_music_dir"]
+        return str(self.data["paths"]["last_music_dir"])
 
     def set_last_music_dir(self, path: str) -> None:
         """Save last used music directory."""
@@ -215,7 +241,7 @@ class Config:
 
     def get_last_output_dir(self) -> str:
         """Get last used output directory."""
-        return self.data["paths"]["last_output_dir"]
+        return str(self.data["paths"]["last_output_dir"])
 
     def set_last_output_dir(self, path: str) -> None:
         """Save last used output directory."""
@@ -224,7 +250,7 @@ class Config:
 
     def get_last_tags_file(self) -> str:
         """Get last used tags file."""
-        return self.data["paths"]["last_tags_file"]
+        return str(self.data["paths"]["last_tags_file"])
 
     def set_last_tags_file(self, path: str) -> None:
         """Save last used tags file."""
@@ -234,7 +260,7 @@ class Config:
     # Format settings
     def get_format(self, field: str) -> str:
         """Get format string for a field."""
-        return self.data["formats"].get(field, f"%{field}%")
+        return str(self.data["formats"].get(field, f"%{field}%"))
 
     def set_format(self, field: str, format_str: str) -> None:
         """Save format string for a field."""
@@ -243,7 +269,7 @@ class Config:
 
     def get_sort_format(self, field: str) -> str:
         """Get sort format string for a field."""
-        return self.data["sort_formats"].get(field, "")
+        return str(self.data["sort_formats"].get(field, ""))
 
     def set_sort_format(self, field: str, format_str: str) -> None:
         """Save sort format string for a field."""
@@ -252,24 +278,26 @@ class Config:
 
     def get_all_formats(self) -> Dict[str, str]:
         """Get all format strings."""
-        return self.data["formats"].copy()
+        formats: Dict[str, str] = self.data["formats"].copy()
+        return formats
 
     def get_all_sort_formats(self) -> Dict[str, str]:
         """Get all sort format strings."""
-        return self.data["sort_formats"].copy()
+        formats: Dict[str, str] = self.data["sort_formats"].copy()
+        return formats
 
     # Database settings
     def get_database_version(self) -> int:
         """Get database version (13 or 16).
-        
+
         Returns:
             Database version number (defaults to 16 if not configured)
         """
-        return self.data.get("database", {}).get("version", 16)
+        return int(self.data.get("database", {}).get("version", 16))
 
     def set_database_version(self, version: int) -> None:
         """Set database version.
-        
+
         Args:
             version: Database version (13 or 16)
         """
@@ -281,27 +309,27 @@ class Config:
     # Performance settings
     def get_tag_cache_memory(self) -> int:
         """Get maximum tag cache memory in MB.
-        
+
         If not explicitly configured (None), automatically calculates
         based on available system RAM.
-        
+
         Returns:
             Maximum memory in megabytes
         """
         configured_value = self.data.get("performance", {}).get("tag_cache_memory_mb")
-        
+
         # If None or not set, auto-detect
         if configured_value is None:
             return get_optimal_cache_memory_mb()
-        
-        return configured_value
+
+        return int(configured_value)
 
     def set_tag_cache_memory(self, memory_mb: int) -> None:
         """Set maximum tag cache memory.
-        
+
         Args:
             memory_mb: Maximum memory in megabytes (recommended: 256-2048)
-        
+
         Raises:
             ValueError: If memory_mb is less than 100
         """

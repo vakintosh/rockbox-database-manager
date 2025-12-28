@@ -15,38 +15,44 @@ from threading import Lock
 from ..tagging.tag.formats import SUPPORTED_EXTENSIONS as audio_formats
 from .cache import TagCache
 
+
 def warn_no_tags():
-    logging.warning("Tagging support is disabled!\n" + \
-                    "Please install the mutagen tag library.\n" +\
-                    "(Available from http://code.google.com/p/mutagen/)")
+    logging.warning(
+        "Tagging support is disabled!\n"
+        + "Please install the mutagen tag library.\n"
+        + "(Available from http://code.google.com/p/mutagen/)"
+    )
+
 
 try:
     from .. import tagging
 except ImportError:
-    tagging = None
+    tagging = None  # type: ignore[assignment]
     warn_no_tags()
 
 
 def myprint(*args, **kwargs):
     """Simple print wrapper for scanner callback functions.
-    
+
     This is used as the default callback function for scanner functions
     that ask for a callback.
     """
-    sep = kwargs.get('sep', ' ')
-    end = kwargs.get('end', '\n')
-    
+    sep = kwargs.get("sep", " ")
+    end = kwargs.get("end", "\n")
+
     sys.stdout.write(sep.join(str(a) for a in args) + end)
 
 
-def read_single_file_tags(path: str) -> Tuple[str, Optional[int], Optional[int], Optional[Any]]:
+def read_single_file_tags(
+    path: str,
+) -> Tuple[str, Optional[int], Optional[int], Optional[Any]]:
     """Read tags from a single file (standalone function for multiprocessing).
-    
+
     This function is defined at module level to be picklable for multiprocessing.
-    
+
     Args:
         path: Path to the audio file
-        
+
     Returns:
         Tuple of (path, size, mtime, tags) or (path, None, None, None) on error
     """
@@ -56,11 +62,11 @@ def read_single_file_tags(path: str) -> Tuple[str, Optional[int], Optional[int],
             from .. import tagging
         except ImportError:
             return (path, None, None, None)
-            
+
         path_obj = Path(path)
         stat = path_obj.stat()
         size, mtime = stat.st_size, int(stat.st_mtime)
-        
+
         # Check if file is in cache and unchanged
         # Note: Cache access from worker processes - they get a copy of the cache
         lowerpath = path.lower()
@@ -70,7 +76,7 @@ def read_single_file_tags(path: str) -> Tuple[str, Optional[int], Optional[int],
                 # File unchanged, use cached tags
                 cached_tags = TagCache.get(lowerpath)[1]
                 return (path, size, mtime, cached_tags)
-        
+
         # File is new or modified, read tags
         tags = tagging.read(path)
         if tags is None:
@@ -83,10 +89,12 @@ def read_single_file_tags(path: str) -> Tuple[str, Optional[int], Optional[int],
 
 class FileScanner:
     """Handles scanning and reading music files with multiprocessing support."""
-    
-    def __init__(self, max_workers: Optional[int] = None, use_multiprocessing: bool = True):
+
+    def __init__(
+        self, max_workers: Optional[int] = None, use_multiprocessing: bool = True
+    ):
         """Initialize the file scanner.
-        
+
         Args:
             max_workers: Maximum number of parallel workers for tag parsing.
                         If None, auto-detects based on CPU count.
@@ -100,12 +108,12 @@ class FileScanner:
                 max_workers = os.cpu_count() or 1
             else:
                 max_workers = min(32, (os.cpu_count() or 1) + 4)
-        
+
         self.max_workers = max_workers
         self.use_multiprocessing = use_multiprocessing
         self._lock = Lock()
         self.supported_extensions = {fmt.lower() for fmt in audio_formats}
-        
+
         # Persistent executor pool - reused across operations for better performance
         # Use ProcessPoolExecutor for true parallelism (bypasses GIL)
         if use_multiprocessing:
@@ -113,24 +121,26 @@ class FileScanner:
         else:
             # Fallback to threading if multiprocessing not desired
             from concurrent.futures import ThreadPoolExecutor
-            self._executor = ThreadPoolExecutor(max_workers=self.max_workers)
-        
+
+            self._executor = ThreadPoolExecutor(max_workers=self.max_workers)  # type: ignore[assignment]
+
         self._shutdown = False
-    
-    def add_file(self, file_path: str, paths_set: set, failed_list: list,
-                 callback: Optional[Callable] = myprint) -> None:
+
+    def add_file(
+        self,
+        file_path: str,
+        paths_set: set,
+        failed_list: list,
+        callback: Optional[Callable] = myprint,
+    ) -> None:
         """Add a single file to the database.
-        
+
         Args:
             file_path: Path to the file to add
             paths_set: Set to add the file path to
             failed_list: List to add failed file paths to
             callback: Callback function for progress updates
         """
-        if tagging is None:
-            warn_no_tags()
-            return
-        
         if Path(file_path).suffix.lower() not in self.supported_extensions:
             logging.debug("Skipping unsupported file format: %s", file_path)
             return
@@ -139,12 +149,18 @@ class FileScanner:
         if callback:
             callback(path)
         self._add_file_internal(file_path, paths_set, failed_list)
-    
-    def _add_file_internal(self, path: str, paths_set: set, failed_list: list,
-                          size: Optional[int] = None, mtime: Optional[int] = None,
-                          tags: Optional[Any] = None) -> None:
+
+    def _add_file_internal(
+        self,
+        path: str,
+        paths_set: set,
+        failed_list: list,
+        size: Optional[int] = None,
+        mtime: Optional[int] = None,
+        tags: Optional[Any] = None,
+    ) -> None:
         """Internal method to add a file to the cache and paths set.
-        
+
         Args:
             path: File path
             paths_set: Set to add the file path to
@@ -177,28 +193,32 @@ class FileScanner:
         else:
             if mtime > cached_mtime:
                 # Store minimal tags to reduce memory usage
-                minimal_tags = TagCache.extract_essential_tags(tags) if tags is not None else TagCache.get(lowerpath)[1]
+                minimal_tags = (
+                    TagCache.extract_essential_tags(tags)
+                    if tags is not None
+                    else TagCache.get(lowerpath)[1]
+                )
                 TagCache.set(lowerpath, ((size, mtime), minimal_tags))
                 # Move to end after update
                 TagCache.move_to_end(lowerpath)
         paths_set.add(lowerpath)
-    
-    def add_files(self, files: List[str], paths_set: set, failed_list: list,
-                  callback: Optional[Callable] = myprint) -> None:
+
+    def add_files(
+        self,
+        files: List[str],
+        paths_set: set,
+        failed_list: list,
+        callback: Optional[Callable] = myprint,
+    ) -> None:
         """Add a list of files.
-        
+
         Args:
             files: List of file paths to add
             paths_set: Set to add the file paths to
             failed_list: List to add failed file paths to
             callback: Callback function for progress updates
         """
-        if tagging is None:
-            warn_no_tags()
-            return
-
-        # Batch progress updates to reduce callback overhead
-        batch_size = 100  # Update every 100 files
+        batch_size = 100
         for i, file in enumerate(files, 1):
             file = str(file)
             if callback and i % batch_size == 0:
@@ -207,38 +227,39 @@ class FileScanner:
                 logging.debug("Skipping unsupported file format: %s", file)
                 continue
             self._add_file_internal(file, paths_set, failed_list)
-        
+
         # Final update
         if callback and len(files) % batch_size != 0:
             callback(f"Processing files... {len(files)}/{len(files)}")
-    
-    def read_tags_batch(self, file_paths: List[str]) -> List[Tuple[str, Optional[int], Optional[int], Optional[Any]]]:
+
+    def read_tags_batch(
+        self, file_paths: List[str]
+    ) -> List[Tuple[str, Optional[int], Optional[int], Optional[Any]]]:
         """Read tags from multiple files in parallel using multiprocessing.
-        
+
         Returns list of (path, size, mtime, tags) tuples.
         Uses ProcessPoolExecutor by default to bypass GIL for CPU-intensive tag parsing.
         Optimized to skip reading tags if file is unchanged in cache.
-        
+
         Args:
             file_paths: List of file paths to read
-            
+
         Returns:
             List of tuples containing (path, size, mtime, tags)
         """
-        if tagging is None:
-            return []
-        
         results = []
-        
+
         # Use persistent executor (ProcessPoolExecutor or ThreadPoolExecutor)
         if self._shutdown:
             # Pool has been shut down, return empty results
             return []
-        
+
         # Submit all tasks to the process pool
-        futures = {self._executor.submit(read_single_file_tags, path): path 
-                  for path in file_paths}
-        
+        futures = {
+            self._executor.submit(read_single_file_tags, path): path
+            for path in file_paths
+        }
+
         # Collect results as they complete
         for future in as_completed(futures):
             try:
@@ -250,16 +271,22 @@ class FileScanner:
                 path = futures[future]
                 logging.error("Error processing %s: %s", path, e)
                 results.append((path, None, None, None))
-        
+
         return results
-    
-    def add_dir(self, path: str, paths_set: set, failed_list: list,
-                recursive: bool = True, use_parallel: bool = True,
-                dircallback: Optional[Callable] = myprint,
-                filecallback: Optional[Callable] = None,
-                estimatecallback: Optional[Callable] = None) -> None:
+
+    def add_dir(
+        self,
+        path: str,
+        paths_set: set,
+        failed_list: list,
+        recursive: bool = True,
+        use_parallel: bool = True,
+        dircallback: Optional[Callable] = myprint,
+        filecallback: Optional[Callable] = None,
+        estimatecallback: Optional[Callable] = None,
+    ) -> None:
         """Add a directory (recursively by default) with optional parallel processing.
-        
+
         Args:
             path: Directory path to scan
             paths_set: Set to add file paths to
@@ -270,13 +297,10 @@ class FileScanner:
             filecallback: Callback function called for each file
             estimatecallback: Callback function for progress estimation
         """
-        if tagging is None:
-            warn_no_tags()
-            return
 
         def blank(*args: Any, **kwargs: Any) -> None:
             pass
-        
+
         if not dircallback:
             dircallback = blank
         if not filecallback:
@@ -284,7 +308,7 @@ class FileScanner:
 
         original_root = str(path)
         batch_size = 100  # Process files in batches
-        
+
         # Collect all files first for parallel processing
         all_files = []
         for root, dirs, files in os.walk(original_root):
@@ -296,44 +320,48 @@ class FileScanner:
                 all_files.append(str(file_path))
             if not recursive:
                 break
-        
+
         total_files = len(all_files)
-        
+
         if estimatecallback:
             estimatecallback(total_files)
-        
+
         # Process files
         if use_parallel and total_files > batch_size:
             # Parallel processing for large datasets
             file_count = 0
             for i in range(0, total_files, batch_size):
-                batch = all_files[i:i + batch_size]
+                batch = all_files[i : i + batch_size]
                 results = self.read_tags_batch(batch)
-                
+
                 # Add results to cache with thread-safe operations
                 with self._lock:
                     for path, size, mtime, tags in results:
                         if size is not None and tags is not None:
-                            self._add_file_internal(path, paths_set, failed_list, size, mtime, tags)
+                            self._add_file_internal(
+                                path, paths_set, failed_list, size, mtime, tags
+                            )
                             file_count += 1
                         else:
                             failed_list.append(path)
-                
+
                 processed = min(i + batch_size, total_files)
                 if filecallback:
                     filecallback(f"Processing files... {processed}/{total_files}")
         else:
             # Sequential processing for small file counts
             file_count = 0
-            for file_path in all_files:
-                self._add_file_internal(file_path, paths_set, failed_list)
+            for file_path_obj in all_files:
+                file_path_str = str(file_path_obj)
+                self._add_file_internal(file_path_str, paths_set, failed_list)
                 file_count += 1
-                
+
                 if filecallback and file_count % batch_size == 0:
-                    filecallback(f"Processing files... {file_count}/{total_files}")    
+                    filecallback(f"Processing files... {file_count}/{total_files}")
+
     def shutdown(self, wait: bool = True) -> None:
         """Shutdown the persistent executor pool (ProcessPoolExecutor or ThreadPoolExecutor).
-        
+
         Args:
             wait: If True, wait for all pending tasks to complete before shutting down
         """
@@ -341,18 +369,18 @@ class FileScanner:
             self._shutdown = True
             if self._executor:
                 self._executor.shutdown(wait=wait)
-    
+
     def __del__(self):
         """Cleanup thread pool on object destruction."""
         try:
             self.shutdown(wait=False)
         except Exception:
             pass  # Ignore errors during cleanup
-    
+
     def __enter__(self):
         """Context manager entry."""
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit - shutdown pool."""
         self.shutdown(wait=True)

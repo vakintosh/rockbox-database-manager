@@ -1,35 +1,17 @@
-Collecting workspace information# Rockbox Database Manager
-
-A modern Python 3.11+ application for managing Rockbox database files with both GUI and CLI interfaces. Generate, inspect, validate, and manipulate Rockbox database files from your music collection.
+A Python-based utility to accelerate Rockbox library management by generating database files on your PC. Designed to bypass the slow indexing speeds of vintage hardware, it allows you to build, validate, and map paths for your entire collection in seconds.
 
 [![Python Version](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-GPL%20v2-blue.svg)](LICENSE)
-[![Test Coverage](https://img.shields.io/badge/coverage-29%25-yellow.svg)](tests/TEST_STATUS.md)
-[![Tests](https://img.shields.io/badge/tests-30%2F30%20passing-green.svg)](tests/TEST_STATUS.md)
+
+---
+## Credits & History
+
+### Original Author (2009)
+**Mike Richards** - Original Python 2.x Gui implementation with wxPython. See [Legacy Codebase](Legacy_Codebase)
 
 ---
 
-## 📋 Table of Contents
-
-- Features
-- Status
-- Requirements
-- Installation
-- Quick Start
-- Usage
-  - Command-Line Interface (CLI)
-  - GUI Application
-- Configuration
-- Testing
-- Project Structure
-- Platform Notes
-- Contributing
-- Credits & History
-- License
-
----
-
-## ✨ Features
+## Features
 
 - **Generate Rockbox databases** from audio file metadata
 - **Support for multiple formats**: MP3, FLAC, MP4, Ogg Vorbis, WMA, and more
@@ -452,19 +434,32 @@ uv run ruff format src/ tests/
 
 Contributions are welcome! Please ensure:
 
-1. **All tests pass:**
+1. **Install pre-commit hooks** (recommended):
+   ```bash
+   uv run pre-commit install
+   uv run pre-commit install --hook-type pre-push
+   ```
+
+2. **All tests pass:**
    ```bash
    uv run pytest
    ```
 
-2. **Code passes linting:**
+3. **Code passes linting:**
    ```bash
    uv run ruff check src/ tests/
    ```
 
-3. **New features include tests**
+4. **Type checking passes:**
+   ```bash
+   uv run mypy src/
+   ```
 
-4. **Code follows existing style conventions**
+5. **New features include tests**
+
+6. **Code follows existing style conventions**
+
+With pre-commit hooks installed, most of these checks run automatically on commit/push.
 
 ### Development Setup
 
@@ -476,6 +471,10 @@ cd rockbox-db-manager
 # Install with dev dependencies
 uv sync --group dev
 
+# Install pre-commit hooks (recommended)
+uv run pre-commit install
+uv run pre-commit install --hook-type pre-push
+
 # Run tests
 uv run pytest -v
 
@@ -485,6 +484,38 @@ uv run ruff check src/ tests/
 # Run type checker
 uv run mypy src/
 ```
+
+### Pre-commit Hooks
+
+This project uses [pre-commit](https://pre-commit.com/) to ensure code quality. The hooks run automatically on `git commit` and `git push`.
+
+**Configured hooks:**
+- **ruff** - Lints and formats code automatically
+- **trailing-whitespace** - Removes trailing whitespace
+- **end-of-file-fixer** - Ensures files end with a newline
+- **check-yaml** - Validates YAML syntax
+- **check-added-large-files** - Prevents committing large files
+- **mypy** - Type checking
+- **pytest** - Runs tests before push (pre-push hook)
+
+**Setup:**
+```bash
+# Install hooks (one-time setup)
+uv run pre-commit install
+uv run pre-commit install --hook-type pre-push
+
+# Run hooks manually on all files
+uv run pre-commit run --all-files
+
+# Skip hooks for a specific commit (not recommended)
+git commit --no-verify -m "message"
+```
+
+**Benefits:**
+- Automatic code formatting and linting before commit
+- Catches issues early in development
+- Ensures consistent code style across contributors
+- Prevents pushing broken code (pytest on pre-push)
 
 ---
 

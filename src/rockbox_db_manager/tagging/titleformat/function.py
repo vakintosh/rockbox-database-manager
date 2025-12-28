@@ -3,36 +3,38 @@ from pathlib import PurePosixPath
 import operator
 import re
 from functools import reduce, lru_cache
+from typing import Callable
 
 from . import utils
 from . import statement
 from .tagbool import TagBool, TagTrue, TagFalse
 
+
 def parse(string):
     """Parse a titleformat function.
-    
+
     Return a tuple: (Function, length of string parsed)
 
     The string should have the following format:
         '$' any+ '(' [ statement ',' ]* ')'
-    
+
     """
     assert string.startswith("$"), 'Missing starting "$"'
-    name = string[1:string.index('(',1)]
-    string = string[1+len(name)+1:]
+    name = string[1 : string.index("(", 1)]
+    string = string[1 + len(name) + 1 :]
     args = []
     own_length = len(name)
-    while string and not string.startswith(')'):
-        arg, length = statement.parse(string, end_chars = ',)')
+    while string and not string.startswith(")"):
+        arg, length = statement.parse(string, end_chars=",)")
         own_length += length
         args.append(arg)
         string = string[length:]
-        if string.startswith(','):
+        if string.startswith(","):
             own_length += 1
             string = string[1:]
     func = Function(name, args)
     assert func.is_valid()
-    return func, own_length + 1 + 2 # One $, two ()
+    return func, own_length + 1 + 2  # One $, two ()
 
 
 # Values for return checks.
@@ -40,12 +42,13 @@ TEST_RETURN = -4
 TEST_TRUE = -3
 TEST_FALSE = -2
 TEST_ALL = -1
+
+
 def TEST_ARG(x):
     return x
 
 
 class Function:
-
     """A titleformat object representing a function."""
 
     def __init__(self, name, args):
@@ -55,9 +58,9 @@ class Function:
     def is_valid(self):
         """Test to see if the number of args is correct for the function."""
         nArgs = len(self.args)
-        if nArgs < self.function.min_args:
+        if nArgs < self.function.min_args:  # type: ignore[attr-defined]
             return False
-        if self.function.max_args != -1 and nArgs > self.function.max_args:
+        if self.function.max_args != -1 and nArgs > self.function.max_args:  # type: ignore[attr-defined]
             return False
         return True
 
@@ -70,12 +73,15 @@ class Function:
 
     def get_name(self):
         return self.__name
+
     def set_name(self, name):
         self.__name = name
         self.update_function()
+
     name = property(get_name, set_name)
 
-    func_map = {}
+    func_map: dict[str, Callable] = {}
+
     def update_function(self):
         self.function = self.func_map[self.name]
 
@@ -85,7 +91,7 @@ class Function:
     @classmethod
     def __register_function(cls, func, original_func=None):
         """Register a function in the class's function map.
-        
+
         If original_func is supplied, the func's name and docstring
         attributes will be overwritten.
 
@@ -95,8 +101,8 @@ class Function:
 
         """
         if original_func is not None:
-            func.__name__    = original_func.__name__
-            func.__doc__     = original_func.__doc__
+            func.__name__ = original_func.__name__
+            func.__doc__ = original_func.__doc__
         else:
             original_func = func
 
@@ -140,10 +146,11 @@ class Function:
             4. The $left function evaluates to True if its first argument
         evaluates to True. [TEST_ARG(0)]
         """
+
         def string_function(tags, *args):
             ret = []
-            args = (arg.format(tags) for arg in args)
-            for args in utils.iter_arg_list(*args):
+            formatted_args = tuple(arg.format(tags) for arg in args)
+            for args in utils.iter_arg_list(*formatted_args):
                 value = func(*args)
 
                 # Evaluate the bool value of this function
@@ -158,7 +165,7 @@ class Function:
                 else:
                     bool_value = bool(args[bool_test])
 
-                ret.append( TagBool(bool_value, str(value) ) )
+                ret.append(TagBool(bool_value, str(value)))
             return ret
 
         cls.__register_function(string_function, func)
@@ -169,12 +176,13 @@ class Function:
         Number functions have all their arguments converted to ints, and
         always evaluate to False.
         """
+
         def number_function(tags, *args):
             ret = []
-            args = (arg.format(tags) for arg in args)
-            for args in utils.iter_arg_list(*args):
-                args = [_to_int(arg) for arg in args]
-                ret.append( TagFalse(str(func(*args)) ) )
+            formatted_args = tuple(arg.format(tags) for arg in args)
+            for iter_args in utils.iter_arg_list(*formatted_args):
+                int_args = [_to_int(arg) for arg in iter_args]
+                ret.append(TagFalse(str(func(*int_args))))
             return ret
 
         cls.__register_function(number_function, func)
@@ -187,18 +195,20 @@ class Function:
         Meta functions return True or False based on whether or not the field
         was found in the tag object (similar to Field objects).
         """
+
         def meta_function(tags, field, *args):
             return utils.call_func(
                 func, tags, field.format(tags), *(arg.format(tags) for arg in args)
             )
+
         cls.__register_function(meta_function, func)
 
         # Since meta functions recieve the tags argument, we need to adjust
         # the min/max number of arguments calculated by __register_function().
         f = cls.func_map[func.__name__]
-        f.min_args -= 1
-        if f.max_args > 0:
-            f.max_args -= 1
+        f.min_args -= 1  # type: ignore[attr-defined]
+        if f.max_args > 0:  # type: ignore[attr-defined]
+            f.max_args -= 1  # type: ignore[attr-defined]
 
     @classmethod
     def RegisterConditionalFunction(cls, func):
@@ -225,31 +235,32 @@ class Function:
         # adjust the min/max number of arguments calculated by
         # __register_function().
         f = cls.func_map[func.__name__]
-        f.min_args -= 1
-        if f.max_args > 0:
-            f.max_args -= 1
+        f.min_args -= 1  # type: ignore[attr-defined]
+        if f.max_args > 0:  # type: ignore[attr-defined]
+            f.max_args -= 1  # type: ignore[attr-defined]
 
     def __repr__(self):
-        return f'Function({self.name}, {repr(self.args)})'
+        return f"Function({self.name}, {repr(self.args)})"
 
     def to_string(self):
-        return "${}({})".format(self.name, ','.join(a.to_string() for a in self.args))
+        return "${}({})".format(self.name, ",".join(a.to_string() for a in self.args))
 
-#-------------------------------------------------------------------------------
+
+# -------------------------------------------------------------------------------
 # Number functions
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 @lru_cache(maxsize=512)
 def _parse_number_from_string(value_str):
     """Parse a number from a string value. Cached for performance."""
     # Chop to the last non-numeric value
     value = value_str.strip()
-    if value.startswith('-') or value.startswith('+'):
+    if value.startswith("-") or value.startswith("+"):
         sign = value[0]
         value = value[1:]
     else:
-        sign = ''
+        sign = ""
     for i, c in enumerate(value):
-        if c not in '1234567890.':
+        if c not in "1234567890.":
             value = sign + value[:i]
             break
     else:
@@ -263,59 +274,92 @@ def _parse_number_from_string(value_str):
             pass
     return 0
 
+
 def _to_number(value):
     if isinstance(value, (int, float)):
         return value
     if isinstance(value, (list, tuple)):
-        value = ''.join(str(v) for v in value)
+        value = "".join(str(v) for v in value)
     assert isinstance(value, str)
-    
+
     return _parse_number_from_string(value)
+
 
 def _to_int(value):
     return int(_to_number(value))
+
+
 def _to_float(value):
     return float(_to_number(value))
 
+
 def add(*args):
     return reduce(operator.add, args)
+
+
 def sub(*args):
     return reduce(operator.sub, args)
+
+
 def mul(*args):
     return reduce(operator.mul, args)
+
+
 def div(*args):
     return reduce(operator.floordiv, (a for a in args if a != 0))
+
+
 def mod(*args):
     return reduce(operator.mod, (a for a in args if a != 0))
-def muldiv(a,b,c):
+
+
+def muldiv(a, b, c):
     return int(round(float(a) * b / c))
+
+
 def min_(*args):
     return min(args)
-min_.__name__ = 'min'
+
+
+min_.__name__ = "min"
+
+
 def max_(*args):
     return max(args)
-max_.__name__ = 'max'
+
+
+max_.__name__ = "max"
 
 for func in [add, sub, mul, div, muldiv, mod, min_, max_]:
     Function.RegisterNumberFunction(func)
 
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # String functions
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 def left(str, num):
-    return str[:_to_int(num)]
+    return str[: _to_int(num)]
+
+
 def right(str, num):
-    return str[len(str)-_to_int(num):]
+    return str[len(str) - _to_int(num) :]
+
+
 def cut(str, num):
-    return str[_to_int(num):]
+    return str[_to_int(num) :]
+
+
 def insert(str, insert_str, n):
     n = _to_int(n)
     return str[:n] + insert_str + str[n:]
 
+
 def len_(obj):
     return len(obj)
-len_.__name__ = 'len'
+
+
+len_.__name__ = "len"
+
 
 def longest(string1, *strings):
     longest = string1
@@ -324,6 +368,7 @@ def longest(string1, *strings):
             longest = s
     return longest
 
+
 def shortest(string1, *strings):
     shortest = string1
     for s in strings:
@@ -331,96 +376,138 @@ def shortest(string1, *strings):
             shortest = s
     return shortest
 
-_split_chars = [' ', ',', '/', '\\']
+
+_split_chars = [" ", ",", "/", "\\"]
+
+
 def _split_words(str):
     for ch in _split_chars:
-        str = str.replace(ch, ch + ' ')
+        str = str.replace(ch, ch + " ")
     return str.split()
+
+
 def _join_words(words):
-    str = ' '.join(words)
+    str = " ".join(words)
     for ch in _split_chars:
-        str = str.replace(ch + ' ', ch)
+        str = str.replace(ch + " ", ch)
     return str
 
+
 def caps(str):
-    return _join_words(
-        word[0].upper() + word[1:].lower() for word in _split_words(str)
-    )
+    return _join_words(word[0].upper() + word[1:].lower() for word in _split_words(str))
+
+
 def caps2(str):
-    return _join_words(
-        word[0].upper() + word[1:] for word in _split_words(str)
-    )
+    return _join_words(word[0].upper() + word[1:] for word in _split_words(str))
+
+
 def lower(str):
     return str.lower()
+
+
 def upper(str):
     return str.upper()
+
+
 def replace(str, old, new):
     return str.replace(old, new)
 
+
 def num(n, length):
     return str(_to_int(n)).zfill(_to_int(length))
-def pad(str, len, char= ' '):
+
+
+def pad(str, len, char=" "):
     return str.rjust(_to_int(len), char)
-def pad_right(str, len, char=' '):
+
+
+def pad_right(str, len, char=" "):
     return str.ljust(_to_int(len), char)
-def padcut(str, len, char=' '):
+
+
+def padcut(str, len, char=" "):
     len = _to_int(len)
     return str[:len].rjust(len, char)
-def padcut_right(str, len, char=' '):
+
+
+def padcut_right(str, len, char=" "):
     len = _to_int(len)
     return str[len:].ljust(len, char)
 
+
 def repeat(str, len):
     return str * _to_int(len)
+
+
 def strchr(str, ch):
     try:
-        return str.index(ch)+1
+        return str.index(ch) + 1
     except ValueError:
-        return ''
+        return ""
+
+
 def strrchr(str, ch):
     try:
-        return str.rindex(ch)+1
+        return str.rindex(ch) + 1
     except ValueError:
-        return ''
+        return ""
+
+
 def strstr(str1, str2):
     return strchr(str1, str2)
+
+
 def strrstr(str1, str2):
     return strrchr(str1, str2)
+
+
 def substr(str1, start, end):
-    return str1[_to_int(start)-1:_to_int(end)]
+    return str1[_to_int(start) - 1 : _to_int(end)]
+
+
 def trim(str):
     return str.strip()
 
+
 def stripprefix(str, *args):
     if not args:
-        args = ('the', 'a')
+        args = ("the", "a")
     for prefix in args:
-        if str.lower().startswith(prefix + ' '):
-            return str[len(prefix)+1:]
+        if str.lower().startswith(prefix + " "):
+            return str[len(prefix) + 1 :]
     return str
+
+
 def swapprefix(str, *args):
     if not args:
-        args = ('the', 'a')
+        args = ("the", "a")
     for prefix in args:
-        if str.lower().startswith(prefix + ' '):
-            return str[len(prefix)+1:] + ', ' + str[:len(prefix)]
+        if str.lower().startswith(prefix + " "):
+            return str[len(prefix) + 1 :] + ", " + str[: len(prefix)]
     return str
+
 
 def char(num):
     return chr(_to_int(num))
+
+
 def crlf():
-    return '\n'
+    return "\n"
+
+
 def tab(num=1):
-    return '\t' * _to_int(num)
+    return "\t" * _to_int(num)
+
 
 # Compiled regex pattern for year extraction (module-level for performance)
-_YEAR_PATTERN = re.compile(r'(\d{4})')
+_YEAR_PATTERN = re.compile(r"(\d{4})")
+
 
 def year(date_str):
     """Extract year from date string. Handles YYYY, YYYY-MM-DD, etc."""
     date_str = str(date_str).strip()
     if not date_str:
-        return ''
+        return ""
     # Extract first 4 digits (year)
     match = _YEAR_PATTERN.match(date_str)
     return match.group(1) if match else date_str[:4] if len(date_str) >= 4 else date_str
@@ -428,23 +515,50 @@ def year(date_str):
 
 def directory_path(path):
     return str(PurePosixPath(path).parent)
-def directory(path, up = 1):
+
+
+def directory(path, up=1):
     for iterations in range(_to_int(up)):
         path = directory_path(path)
     return PurePosixPath(path).name
+
+
 def ext(path):
     return PurePosixPath(path).suffix
+
+
 def filename(path):
     return PurePosixPath(path).stem
 
+
 # These functions will return True if the first argument is True
 for func in [
-        left, right, cut, len_, insert, lower, upper,
-        caps, caps2, num, pad, pad_right, padcut, padcut_right,
-        repeat, replace,
-        substr, trim, stripprefix, swapprefix,
-        directory, directory_path, ext, filename, year,
-    ]:
+    left,
+    right,
+    cut,
+    len_,
+    insert,
+    lower,
+    upper,
+    caps,
+    caps2,
+    num,
+    pad,
+    pad_right,
+    padcut,
+    padcut_right,
+    repeat,
+    replace,
+    substr,
+    trim,
+    stripprefix,
+    swapprefix,
+    directory,
+    directory_path,
+    ext,
+    filename,
+    year,
+]:
     Function.RegisterStringFunction(func, TEST_ARG(0))
 
 # These functions will return True if the return value is True
@@ -452,22 +566,27 @@ for func in [strchr, strrchr, strstr, strrstr, longest, shortest]:
     Function.RegisterStringFunction(func, TEST_RETURN)
 
 # These functions will never return True
-for func in [char, crlf, tab,]:
+for func in [
+    char,
+    crlf,
+    tab,
+]:
     Function.RegisterStringFunction(func, TEST_FALSE)
 
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # Meta functions
-#-------------------------------------------------------------------------------
-def meta(tags, field, index = None):
+# -------------------------------------------------------------------------------
+def meta(tags, field, index=None):
     try:
         values = tags.get_string(field)
         if index is None:
-            return TagTrue(', '.join(values))
+            return TagTrue(", ".join(values))
         else:
             return TagTrue(values[_to_int(index)])
     except KeyError:
         return TagFalse()
+
 
 def meta_num(tags, field):
     try:
@@ -475,7 +594,8 @@ def meta_num(tags, field):
     except (KeyError, AttributeError):
         return TagFalse(str(0))
 
-def meta_sep(tags, field, sep = ', ', end_sep = None):
+
+def meta_sep(tags, field, sep=", ", end_sep=None):
     if end_sep is None:
         end_sep = sep
     try:
@@ -483,6 +603,7 @@ def meta_sep(tags, field, sep = ', ', end_sep = None):
         return TagTrue(sep.join(values[:-2] + [end_sep.join(values[-2:])]))
     except KeyError:
         return TagFalse()
+
 
 def meta_test(tags, *fields):
     for field in fields:
@@ -492,13 +613,15 @@ def meta_test(tags, *fields):
             return TagFalse()
     return TagTrue()
 
+
 for func in [meta, meta_num, meta_sep, meta_test]:
     Function.RegisterMetaFunction(func)
 
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # Conditional functions
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
+
 
 def _if_test(func):
     """
@@ -512,29 +635,36 @@ def _if_test(func):
 
     Using this format string:
         $if($equals8($len(%<artist%>)),true,false)
-    A song by Iron & Wine and Calexico should return 
+    A song by Iron & Wine and Calexico should return
         ['false', 'true']
     """
+
     @functools.wraps(func)
     def __func(tags, *args):
         return utils.call_func(func, *(arg.format(tags) for arg in args))
+
     return __func
+
 
 @_if_test
 def _equal(arg1, arg2):
     return TagBool(_to_int(arg1) == _to_int(arg2))
 
+
 @_if_test
 def _longer(arg1, arg2):
     return TagBool(len(arg1) > len(arg2))
+
 
 @_if_test
 def _greater(n1, n2):
     return TagBool(_to_int(n1) > _to_int(n2))
 
+
 @_if_test
 def _strcmp(str1, str2):
     return TagBool(str1 == str2)
+
 
 @_if_test
 def _stricmp(str1, str2):
@@ -545,17 +675,20 @@ def _stricmp(str1, str2):
 def _and(*args):
     return TagBool(all(args))
 
+
 @_if_test
 def _or(*args):
     return TagBool(any(args))
+
 
 @_if_test
 def _not(value):
     return TagBool(not value)
 
+
 @_if_test
 def _xor(*args):
-    return TagBool( sum(bool(a) for a in args) % 2 == 1)
+    return TagBool(sum(bool(a) for a in args) % 2 == 1)
 
 
 def _test_conditions(tags, conditions, _then, _else=None):
@@ -578,19 +711,21 @@ def _test_conditions(tags, conditions, _then, _else=None):
             ret.append(else_result)
     return ret
 
-def _if(tags, condition, _then, _else = None):
+
+def _if(tags, condition, _then, _else=None):
     return _test_conditions(tags, condition.format(tags), _then, _else)
 
-def _ifequal(tags, arg1, arg2, _then, _else = None):
+
+def _ifequal(tags, arg1, arg2, _then, _else=None):
     return _test_conditions(tags, _equal(tags, arg1, arg2), _then, _else)
 
-def _ifgreater(tags, arg1, arg2, _then, _else = None):
+
+def _ifgreater(tags, arg1, arg2, _then, _else=None):
     return _test_conditions(tags, _greater(tags, arg1, arg2), _then, _else)
 
-def _iflonger(tags, arg1, arg2, _then, _else = None):
+
+def _iflonger(tags, arg1, arg2, _then, _else=None):
     return _test_conditions(tags, _longer(tags, arg1, arg2), _then, _else)
-
-
 
 
 def _if2(tags, condition, _else):
@@ -623,9 +758,22 @@ def _select(tags, num, *args):
     except IndexError:
         return TagFalse()
 
+
 for func in [
-        _longer, _greater, _strcmp, _stricmp,
-        _if, _if2, _if3, _ifequal, _ifgreater, _iflonger, _select,
-        _and, _or, _not, _xor
-    ]:
+    _longer,
+    _greater,
+    _strcmp,
+    _stricmp,
+    _if,
+    _if2,
+    _if3,
+    _ifequal,
+    _ifgreater,
+    _iflonger,
+    _select,
+    _and,
+    _or,
+    _not,
+    _xor,
+]:
     Function.RegisterConditionalFunction(func)

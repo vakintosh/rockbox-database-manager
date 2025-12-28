@@ -31,7 +31,7 @@ def cmd_load(args: argparse.Namespace) -> None:
     # Load database
     db = Database.read(
         str(db_path),
-        callback=log_callback if logging.getLogger().level <= logging.INFO else None,
+        callback=log_callback if logging.getLogger().level <= logging.INFO else None,  # type: ignore[arg-type]
     )
 
     logging.info("✓ Database loaded successfully")

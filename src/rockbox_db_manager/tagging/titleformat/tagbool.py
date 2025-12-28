@@ -20,6 +20,7 @@ their arguments, for instance $strstr.
 
 """
 
+
 def TagBool(value, rep=None):
     """
     A factory function that returns an object with the value of <rep>
@@ -27,36 +28,43 @@ def TagBool(value, rep=None):
     """
     if rep is None:
         if value:
-            rep = '1'
+            rep = "1"
         else:
-            rep = ''
+            rep = ""
 
-    class BoolClass(rep.__class__):
+    class BoolClass(str):
         """
         A boolean unicode class.  The class derives from unicode, so any
         unicode methods should be transparent.  The class evaluates to a
         boolean value independent of its unicode value.
         """
+
         def __bool__(self):
             return value
-        def __repr__(self):
-            return self.__class__.__name__ + '(' + repr(rep) + ')'
-        def __add__(self, other):
-            return TagBool(bool(self) or bool(other), rep.__class__.__add__(self, other))
 
-    BoolClass.__name__ = 'TagTrue' if value else 'TagFalse'
+        def __repr__(self):
+            return self.__class__.__name__ + "(" + repr(rep) + ")"
+
+        def __add__(self, other):
+            return TagBool(
+                bool(self) or bool(other), rep.__class__.__add__(self, other)
+            )
+
+    BoolClass.__name__ = "TagTrue" if value else "TagFalse"
     return BoolClass(rep)
 
-def TagTrue(rep='1'):
+
+def TagTrue(rep="1"):
     """
     A factory function that returns an object that evaluates to True
     and is converted to a string as the <rep> parameter.
     """
-    return TagBool(True,rep)
+    return TagBool(True, rep)
 
-def TagFalse(rep=''):
+
+def TagFalse(rep=""):
     """
     A factory function that returns an object that evaluates to False
     and is converted to a string as the <rep> parameter.
     """
-    return TagBool(False,rep)
+    return TagBool(False, rep)

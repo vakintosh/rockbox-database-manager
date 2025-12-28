@@ -21,25 +21,25 @@ from .database_operations import DatabaseOperations
 
 class MyFrame(wxFB_gui.Frame):
     """Main application window frame.
-    
+
     This class coordinates the various components of the GUI including
     format string management, database operations, and threading support.
     """
 
     def __init__(self, parent):
         """Initialize the main frame.
-        
+
         Args:
             parent: Parent window (typically None for main frame)
         """
         wxFB_gui.Frame.__init__(self, parent)
-        
+
         # Initialize component managers
         self.format_manager = FormatManager(self)
         self.threading_support = ThreadingSupport(self)
         self.thread_handlers = ThreadHandlers(self)
         self.db_operations = DatabaseOperations(self)
-        
+
         # Bind thread events to handlers
         self.Bind(EVT_THREAD_START, self.thread_handlers.on_thread_start)
         self.Bind(EVT_THREAD_CALLBACK, self.thread_handlers.on_thread_message)
@@ -54,7 +54,7 @@ class MyFrame(wxFB_gui.Frame):
         self.status.SetStatusWidths([200, -1])
 
         # Hide Save Tags and Load Tags buttons
-        self.m_button6.Hide()   # Save Tags button
+        self.m_button6.Hide()  # Save Tags button
         self.m_button61.Hide()  # Load Tags button
 
         # Insert the info panel into the sizer
@@ -94,16 +94,14 @@ class MyFrame(wxFB_gui.Frame):
     def _create_menu_bar(self) -> None:
         """Create menu bar with Window menu and minimize functionality."""
         menubar = wx.MenuBar()
-        
+
         # Window menu
         window_menu = wx.Menu()
         minimize_item = window_menu.Append(
-            wx.ID_ANY,
-            "Minimize\tCtrl+M" if wx.Platform != '__WXMAC__' else "Minimize\tCmd+M",
-            "Minimize window"
+            wx.ID_ANY, "Minimize\tCtrl+M", "Minimize window"
         )
         self.Bind(wx.EVT_MENU, lambda evt: self.Iconize(True), minimize_item)
-        
+
         menubar.Append(window_menu, "&Window")
         self.SetMenuBar(menubar)
 
@@ -134,7 +132,7 @@ class MyFrame(wxFB_gui.Frame):
 
     def OnClose(self, evt):
         """Handle window close event.
-        
+
         Args:
             evt: Close event
         """

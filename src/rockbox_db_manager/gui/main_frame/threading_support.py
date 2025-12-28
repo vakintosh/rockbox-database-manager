@@ -16,15 +16,15 @@ import wx
 
 class CancellableThread(threading.Thread):
     """A thread that can be cancelled."""
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._stop_event = threading.Event()
-        
+
     def stop(self):
         """Request the thread to stop."""
         self._stop_event.set()
-        
+
     def is_stopped(self) -> bool:
         """Check if thread was requested to stop."""
         return self._stop_event.is_set()
@@ -35,7 +35,7 @@ class ThreadingSupport:
 
     def __init__(self, frame):
         """Initialize threading support.
-        
+
         Args:
             frame: The MyFrame instance
         """
@@ -45,10 +45,10 @@ class ThreadingSupport:
 
     def cancel_thread(self, thread_id: str) -> bool:
         """Cancel a running thread by its ID.
-        
+
         Args:
             thread_id: The ID of the thread to cancel
-            
+
         Returns:
             True if thread was found and cancelled, False otherwise
         """
@@ -58,14 +58,16 @@ class ThreadingSupport:
                 thread.stop()
                 return True
             return False
-            
+
     def cancel_all_threads(self) -> None:
         """Cancel all running threads."""
         with self._thread_lock:
             for thread in self._active_threads.values():
                 thread.stop()
 
-    def start_thread(self, func: Callable, *args: Any, thread_id: Optional[str] = None, **kwargs: Any) -> str:
+    def start_thread(
+        self, func: Callable, *args: Any, thread_id: Optional[str] = None, **kwargs: Any
+    ) -> str:
         """Execute a func with *args and **kwargs in a new thread.
 
         Event handlers can be bound as kwargs using the keys:
@@ -100,17 +102,22 @@ class ThreadingSupport:
 
                 # Replace the callback with one that knows its handler and can check cancellation
                 if msg_handler:
+
                     def thread_callback(*args, **kwargs):
                         # Check if thread should stop
                         if thread_obj.is_stopped():
                             raise InterruptedError("Operation cancelled by user")
                         # Handle both single message and multiple arguments
                         if len(args) == 1:
-                            ThreadEvent.post_callback(self.frame, msg_handler, info, args[0])
+                            ThreadEvent.post_callback(
+                                self.frame, msg_handler, info, args[0]
+                            )
                         else:
                             # Multiple arguments - just use first one as message
-                            ThreadEvent.post_callback(self.frame, msg_handler, info, args[0] if args else None)
-                        
+                            ThreadEvent.post_callback(
+                                self.frame, msg_handler, info, args[0] if args else None
+                            )
+
                     # Update all callback types in kwargs if present
                     if "callback" in kwargs:
                         kwargs["callback"] = thread_callback
@@ -130,7 +137,7 @@ class ThreadingSupport:
             except InterruptedError:
                 # Operation was cancelled
                 if info:
-                    wx.CallAfter(lambda: setattr(info, 'status', 'Cancelled'))
+                    wx.CallAfter(lambda: setattr(info, "status", "Cancelled"))
             except SystemExit:
                 # Allow clean thread termination
                 pass
@@ -150,11 +157,14 @@ class ThreadingSupport:
                         del self._active_threads[thread_id]
 
         # Create and start the cancellable thread
-        thread = CancellableThread(target=lambda: worker(thread), daemon=True)
-        
+        thread: CancellableThread = CancellableThread(
+            target=lambda: worker(thread), daemon=True
+        )
+
         # Register thread
         with self._thread_lock:
-            self._active_threads[thread_id] = thread
-            
+            if thread_id is not None:
+                self._active_threads[thread_id] = thread
+
         thread.start()
-        return thread_id
+        return thread_id if thread_id is not None else ""

@@ -19,10 +19,10 @@ class InfoPanel(wx.ScrolledWindow):
 
     def MakeRow(self, description=""):
         """Create an Info object, add it to the sizer, and return it.
-        
+
         Args:
             description: Description text for the operation
-            
+
         Returns:
             Info object for progress tracking
         """
@@ -52,7 +52,7 @@ class RapidlyUpdatingText(wx.Window):
 
     def SetValue(self, text):
         """Update the text content and trigger a repaint.
-        
+
         Args:
             text: New text to display
         """
@@ -68,7 +68,7 @@ class RapidlyUpdatingText(wx.Window):
 
     def GetValue(self):
         """Get the current text content.
-        
+
         Returns:
             Current text string
         """
@@ -76,7 +76,7 @@ class RapidlyUpdatingText(wx.Window):
 
     def OnPaint(self, evt):
         """Handle paint events to draw the text.
-        
+
         Args:
             evt: Paint event
         """
@@ -87,14 +87,14 @@ class RapidlyUpdatingText(wx.Window):
 
 class Info(object):
     """Progress tracking information for a single operation.
-    
+
     Provides a gauge, timer, description, and status message
     for tracking background operations.
     """
 
     def __init__(self, parent, description=""):
         """Initialize the Info object.
-        
+
         Args:
             parent: Parent window
             description: Description of the operation
@@ -126,29 +126,30 @@ class Info(object):
 
     def SetRange(self, range):
         """Set the range of the progress gauge.
-        
+
         Args:
             range: Maximum value for the gauge
         """
         self.gauge_ctrl.SetRange(range)
 
     # Allow access to the controls as properties
-    def _make_property(name):
+    @staticmethod
+    def _make_property(name: str):
         """Create a property that delegates to the underlying control.
-        
+
         Args:
             name: Base name of the control (without _ctrl suffix)
-            
+
         Returns:
             Property object
         """
-        name += "_ctrl"
+        ctrl_name = name + "_ctrl"
 
         def __get(self):
-            return getattr(self, name).GetValue()
+            return getattr(self, ctrl_name).GetValue()
 
         def __set(self, value):
-            getattr(self, name).SetValue(value)
+            getattr(self, ctrl_name).SetValue(value)
 
         return property(__get, __set)
 
