@@ -63,6 +63,32 @@ A Python-based utility to accelerate Rockbox library management by generating da
 
 ## Installation
 
+### Using Docker (Recommended for Linux/Servers)
+
+```bash
+# Build the image (fast with uv)
+docker build -t rockbox-db-manager .
+
+# Generate database
+docker run -v /path/to/music:/music -v /path/to/output:/output \
+  rockbox-db-manager rdbm generate /music -o /output
+
+# Validate database
+docker run -v /path/to/output:/output \
+  rockbox-db-manager rdbm validate /output
+
+# Load database info
+docker run -v /path/to/output:/output \
+  rockbox-db-manager rdbm load /output
+
+# Inspect a database file
+docker run -v /path/to/output:/output \
+  rockbox-db-manager rdbm inspect /output/database_0.tcd
+
+# Interactive shell
+docker run -it -v /path/to/music:/music rockbox-db-manager bash
+```
+
 ### Using UV (Recommended)
 
 ```bash
