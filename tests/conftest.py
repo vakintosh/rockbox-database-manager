@@ -1,11 +1,24 @@
 """Pytest configuration and fixtures."""
 
 import sys
-import os
+from pathlib import Path
 import pytest
 
+from rockbox_db_manager.database import Database
+from rockbox_db_manager.tagging.tag.tagfile import TagFile, TagEntry
+
 # Add src directory to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
+
+
+def pytest_addoption(parser):
+    """Add custom command line options."""
+    parser.addoption(
+        "--update-baselines",
+        action="store_true",
+        default=False,
+        help="Update performance baselines instead of comparing"
+    )
 
 
 @pytest.fixture
@@ -24,7 +37,6 @@ def temp_music_dir(tmp_path):
 @pytest.fixture
 def sample_tagfile():
     """Create a sample TagFile for testing."""
-    from rockbox_db_manager.tagfile import TagFile, TagEntry
     
     tagfile = TagFile()
     tagfile.append(TagEntry("Artist 1"))
@@ -37,6 +49,4 @@ def sample_tagfile():
 @pytest.fixture
 def sample_database():
     """Create a sample Database for testing."""
-    from rockbox_db_manager.database import Database
-    
     return Database()

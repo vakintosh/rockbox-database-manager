@@ -1,5 +1,4 @@
-
-
+import operator
 # itertools.product doesn't exist in python 2.5
 try:
     from itertools import product
@@ -14,8 +13,6 @@ except ImportError:
             result = [x+[y] for x in result for y in pool]
         for prod in result:
             yield tuple(prod)
-
-import operator
 
 def make_arg_list(*args):
     return zip(*product(*(_to_list(arg) for arg in args)))

@@ -1,4 +1,4 @@
-import os
+from pathlib import PurePosixPath
 
 from .tagbool import TagTrue, TagFalse
 
@@ -176,11 +176,11 @@ Field.RegisterField('track artist', get_track_artist)
 def _get_path(tags):
     return tags.get_string('path')[0]
 def get_filename_ext(tags):
-    return [os.path.split(_get_path(tags))[1]]
+    return [PurePosixPath(_get_path(tags)).name]
 def get_filename(tags):
-    return [os.path.splitext(get_filename_ext(tags))[0]]
+    return [PurePosixPath(get_filename_ext(tags)[0]).stem]
 def get_directoryname(tags):
-    return [os.path.basename(os.path.dirname(_get_path(tags)))]
+    return [PurePosixPath(_get_path(tags)).parent.name]
 
 Field.RegisterField('filename_ext',  get_filename_ext)
 Field.RegisterField('filename',      get_filename)

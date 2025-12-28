@@ -47,6 +47,7 @@ pytest --cov=rockbox_db_manager --cov-report=html
 - `test_indexfile.py` - Tests for IndexFile and IndexEntry classes
 - `test_database.py` - Tests for Database class and operations
 - `conftest.py` - Pytest configuration and shared fixtures
+- `test_cli.py` - Tests for command-line interface functions
 
 ## Writing New Tests
 

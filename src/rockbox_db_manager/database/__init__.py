@@ -1,0 +1,291 @@
+"""Rockbox Database Manager - Core Database class.
+
+This package provides the main Database class and supporting components.
+The original large database.py file has been refactored into focused modules:
+
+Modules:
+    cache.py: Tag caching for improved performance (TagCache class)
+    file_scanner.py: File and directory scanning (FileScanner class)
+    generator.py: Database generation logic (DatabaseGenerator class)
+    io.py: Database read/write operations (DatabaseIO class)
+
+The Database class coordinates all these components to provide a high-level
+interface for creating and managing Rockbox database files.
+"""
+
+import multiprocessing
+from typing import Optional, Callable, List
+import logging
+
+from ..constants import FORMATTED_TAGS, FILE_TAGS
+from ..tagging.tag.tagfile import TagFile
+from ..indexfile import IndexFile
+from ..config import Config
+
+from .cache import TagCache
+from .file_scanner import FileScanner, myprint
+from .generator import DatabaseGenerator
+from .io import DatabaseIO
+
+def warn_no_tags():
+    """Warn when tagging support is unavailable."""
+    logging.warning("Tagging support is disabled!\n" + 
+                  "Please install the mutagen tag library.\n" +
+                  "(Available from https://github.com/quodlibet/mutagen)")
+
+try:
+    from .. import tagging
+    from ..tagging import titleformat
+except ImportError:
+    warn_no_tags()
+    tagging = None
+    titleformat = None
+
+
+class Database:
+    """Main Database class for Rockbox Database Manager.
+    
+    This class coordinates tag caching, file scanning, database generation,
+    and I/O operations. It provides a high-level interface for creating and
+    managing Rockbox database files.
+    """
+    
+    def __init__(self, config: Optional[Config] = None):
+        """Initialize a new Database instance.
+        
+        Args:
+            config: Optional Config object. If None, loads default config.
+        """
+        # Load or use provided config
+        self.config = config if config is not None else Config()
+        
+        # Set database version from config BEFORE calling clear()
+        db_version = self.config.get_database_version()
+        if db_version == 13:
+            self.db_magic = 1413695501  # 0x5443480D
+        elif db_version == 16:
+            self.db_magic = 1413695504  # 0x54434810
+        else:
+            # Default to version 16 for invalid values
+            self.db_magic = 1413695504
+            print(f"Warning: Invalid database version {db_version}, using version 16")
+        
+        # Now initialize the database structures
+        self.clear()
+        self.formats = {}
+
+        # Files added to *this* instance
+        self.paths = set()
+        self.failed = []
+        
+        # Parallelization configuration
+        # Auto-detect optimal worker count based on CPU count (I/O-bound workload)
+        # Formula: min(32, cpu_count + 4) allows for efficient I/O concurrency
+        cpu_count = multiprocessing.cpu_count()
+        self.max_workers = min(32, cpu_count + 4)
+        self.use_parallel = True  # Can be toggled via parameters
+        
+        # Initialize scanner and generator with configured workers
+        self._scanner = FileScanner(max_workers=self.max_workers)
+        self._generator = DatabaseGenerator(max_workers=self.max_workers)
+
+        # Set default formats
+        for field in FORMATTED_TAGS:
+            self.set_format(field, '%' + field + '%')
+        self.set_format('grouping', '%title%')
+
+    def clear(self):
+        """Clear the database tagfiles and index."""
+        # Create tagfiles and index
+        self.tagfiles = dict((field, TagFile()) for field in FILE_TAGS)
+        self.index = IndexFile(tagfiles=self.tagfiles)
+        
+        # Set magic version if already configured (use __dict__ to avoid __getattr__)
+        if 'db_magic' in self.__dict__:
+            for tagfile in self.tagfiles.values():
+                tagfile.magic = self.db_magic
+            self.index.magic = self.db_magic
+        
+        self.multiple_fields = {}
+
+    def set_format(self, field: str, format: str, sortformat: Optional[str] = None):
+        """Set the format and the sorting format for a field.
+
+        field must be present in FORMATTED_TAGS. This function will attempt to
+        compile the titleformat strings and will raise an exception if they do
+        not correctly compile.
+        
+        Args:
+            field: Field name from FORMATTED_TAGS
+            format: Format string for the field
+            sortformat: Optional sort format string
+        """
+        if titleformat is None:
+            warn_no_tags()
+            return
+
+        assert field in FORMATTED_TAGS
+        self.formats[field] = (
+            titleformat.compile(format),
+            titleformat.compile(sortformat) if sortformat is not None else None
+        )
+
+    def __getattr__(self, key):
+        """Allow access to self.tagfiles[field] via self.field."""
+        return self.tagfiles[key]
+
+    def __getitem__(self, key):
+        """Allow access to self.tagfiles[field] via self[field]."""
+        if key == 'index':
+            return self.index
+        else:
+            return self.tagfiles[key]
+
+    #---------------------------------------------------------------------------
+    # Tag cache operations (delegated to TagCache)
+    #---------------------------------------------------------------------------
+    
+    @staticmethod
+    def _extract_essential_tags(tag_obj):
+        """Extract only essential fields from a Tag object to minimize cache size."""
+        return TagCache.extract_essential_tags(tag_obj)
+    
+    @staticmethod
+    def _restore_tag_dict(tag_dict):
+        """Convert minimal tag dictionary back to a format compatible with database generation."""
+        return TagCache.restore_tag_dict(tag_dict)
+
+    def load_tags(self, path: str, callback: Optional[Callable] = None):
+        """Update paths and tag_cache from a pickled file.
+        
+        Args:
+            path: Path to the pickled tags file
+            callback: Optional callback for progress updates
+        """
+        TagCache.load(path, self.paths, callback)
+
+    def save_tags(self, path: str, callback: Optional[Callable] = None) -> tuple:
+        """Save tags in self.paths to a compressed pickled file.
+        
+        Args:
+            path: Path to save the pickled tags file
+            callback: Optional callback for progress updates
+            
+        Returns:
+            Tuple of (actual_path_used, number_of_entries_saved)
+        """
+        return TagCache.save(path, self.paths, callback)
+
+    @classmethod
+    def cleanup_cache(cls, keep_paths: Optional[set] = None):
+        """Remove unused entries from the shared tag_cache to free memory.
+        
+        Args:
+            keep_paths: Optional set of paths to keep
+        """
+        TagCache.cleanup(keep_paths)
+    
+    @classmethod
+    def _trim_cache(cls):
+        """Trim cache to prevent unbounded growth."""
+        TagCache.trim()
+
+    #---------------------------------------------------------------------------
+    # File operations (delegated to FileScanner)
+    #---------------------------------------------------------------------------
+    
+    def add_file(self, file: str, callback: Callable = myprint) -> None:
+        """Add a file and update the tag_cache.
+        
+        Args:
+            file: Path to the file to add
+            callback: Callback function for progress updates
+        """
+        self._scanner.add_file(file, self.paths, self.failed, callback)
+
+    def add_files(self, files: List[str], callback: Callable = myprint) -> None:
+        """Add a list of files.
+        
+        Args:
+            files: List of file paths to add
+            callback: Callback function for progress updates
+        """
+        self._scanner.add_files(files, self.paths, self.failed, callback)
+
+    def add_dir(self, path: str, recursive: bool = True,
+                dircallback: Optional[Callable] = myprint, 
+                filecallback: Optional[Callable] = None, 
+                estimatecallback: Optional[Callable] = None,
+                parallel: Optional[bool] = None) -> None:
+        """Add a directory (recursively by default) with optional parallel processing.
+        
+        Args:
+            path: Directory path to scan
+            recursive: Whether to scan recursively (default: True)
+            dircallback: Callback function called for each directory
+            filecallback: Callback function called for each file
+            estimatecallback: Callback function for progress estimation
+            parallel: Override parallel processing (default: uses self.use_parallel)
+        """
+        use_parallel = parallel if parallel is not None else self.use_parallel
+        self._scanner.add_dir(path, self.paths, self.failed, recursive, use_parallel,
+                             dircallback, filecallback, estimatecallback)
+
+    #---------------------------------------------------------------------------
+    # Database generation (delegated to DatabaseGenerator)
+    #---------------------------------------------------------------------------
+    
+    def generate_database(self, callback: Callable = myprint, 
+                         parallel: Optional[bool] = None):
+        """Generate the database from files or dirs that have been added.
+
+        This creates an IndexFile and TagFiles for each formatted field.
+        Use write() to write the database to files.
+        
+        Args:
+            callback: Progress callback function
+            parallel: Override parallel processing (default: uses self.use_parallel)
+        """
+        use_parallel = parallel if parallel is not None else self.use_parallel
+        self.clear()
+        
+        self.multiple_fields = self._generator.generate(
+            self.paths, self.formats, self.tagfiles, self.index,
+            use_parallel, callback
+        )
+
+    #---------------------------------------------------------------------------
+    # Database I/O (delegated to DatabaseIO)
+    #---------------------------------------------------------------------------
+    
+    def write(self, out_dir: str = '', callback: Callable = myprint):
+        """Write the database to a directory.
+
+        Files that will be written:
+            database_0.tcd through database_8.tcd
+            database_idx.tcd
+            
+        Args:
+            out_dir: Output directory path
+            callback: Progress callback function
+        """
+        DatabaseIO.write(self.tagfiles, self.index, out_dir, callback)
+
+    @staticmethod
+    def read(in_dir: str = '', callback: Callable = myprint):
+        """Read the database from a directory and return a Database object.
+
+        Files that will be read:
+            database_0.tcd through database_8.tcd
+            database_idx.tcd
+            
+        Args:
+            in_dir: Input directory path
+            callback: Progress callback function
+            
+        Returns:
+            Database object with loaded data
+        """
+        db = Database()
+        db.tagfiles, db.index = DatabaseIO.read(in_dir, callback)
+        return db

@@ -1,9 +1,11 @@
 """Tests for Database class and operations."""
 
 import tempfile
-import os
+from pathlib import Path
 from rockbox_db_manager.database import Database
-from rockbox_db_manager.defs import FORMATTED_TAGS
+from rockbox_db_manager.constants import FORMATTED_TAGS
+from rockbox_db_manager.database import myprint
+
 
 
 class TestDatabase:
@@ -42,9 +44,9 @@ class TestDatabase:
             db.write(tmpdir)
             
             # Should create database files
-            assert os.path.exists(os.path.join(tmpdir, 'database_idx.tcd'))
+            assert (Path(tmpdir) / 'database_idx.tcd').exists()
             # Artist is index 0
-            assert os.path.exists(os.path.join(tmpdir, 'database_0.tcd'))
+            assert (Path(tmpdir) / 'database_0.tcd').exists()
 
     def test_database_round_trip(self):
         """Test writing and reading back a database."""
@@ -86,7 +88,6 @@ class TestDatabaseHelpers:
 
     def test_myprint_function(self):
         """Test myprint helper doesn't crash."""
-        from rockbox_db_manager.database import myprint
         
         # Should not raise an exception
         myprint("test")

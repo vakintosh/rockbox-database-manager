@@ -1,5 +1,5 @@
 import sys
-import os
+from pathlib import Path
 import mmap
 import time
 
@@ -221,7 +221,7 @@ if __name__ == '__main__':
     filename = f"database_{num}.tcd"
 
     print("Reading DB ", filename)
-    print("File size: ", os.path.getsize(filename))
+    print("File size: ", Path(filename).stat().st_size)
     
     if num == "idx":
         res = parse_indexfile(filename)

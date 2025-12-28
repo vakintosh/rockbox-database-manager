@@ -1,6 +1,7 @@
 import functools
-import os
+from pathlib import PurePosixPath
 import operator
+import re
 from functools import reduce, lru_cache
 
 from . import utils
@@ -277,7 +278,6 @@ def _to_float(value):
     return float(_to_number(value))
 
 def add(*args):
-    print('adding',args)
     return reduce(operator.add, args)
 def sub(*args):
     return reduce(operator.sub, args)
@@ -413,17 +413,29 @@ def crlf():
 def tab(num=1):
     return '\t' * _to_int(num)
 
+# Compiled regex pattern for year extraction (module-level for performance)
+_YEAR_PATTERN = re.compile(r'(\d{4})')
+
+def year(date_str):
+    """Extract year from date string. Handles YYYY, YYYY-MM-DD, etc."""
+    date_str = str(date_str).strip()
+    if not date_str:
+        return ''
+    # Extract first 4 digits (year)
+    match = _YEAR_PATTERN.match(date_str)
+    return match.group(1) if match else date_str[:4] if len(date_str) >= 4 else date_str
+
 
 def directory_path(path):
-    return os.path.dirname(path)
+    return str(PurePosixPath(path).parent)
 def directory(path, up = 1):
     for iterations in range(_to_int(up)):
         path = directory_path(path)
-    return os.path.basename(path)
+    return PurePosixPath(path).name
 def ext(path):
-    return os.path.splitext(path)[1]
+    return PurePosixPath(path).suffix
 def filename(path):
-    return os.path.splitext(os.path.basename(path))[0]
+    return PurePosixPath(path).stem
 
 # These functions will return True if the first argument is True
 for func in [
@@ -431,7 +443,7 @@ for func in [
         caps, caps2, num, pad, pad_right, padcut, padcut_right,
         repeat, replace,
         substr, trim, stripprefix, swapprefix,
-        directory, directory_path, ext, filename,
+        directory, directory_path, ext, filename, year,
     ]:
     Function.RegisterStringFunction(func, TEST_ARG(0))
 

@@ -10,7 +10,7 @@ wheels/
 .mypy_cache
 htmlcov
 .rockbox
-Intro.mp3
+music_test_folder
 
 # Virtual environments
 .venv

@@ -4,6 +4,7 @@ Handles saving and loading user preferences including format strings,
 window positions, and last used directories.
 """
 
+import copy
 import tomllib
 from pathlib import Path
 from typing import Dict, Any, Tuple
@@ -12,6 +13,45 @@ try:
     import tomli_w
 except ImportError:
     tomli_w = None  # type: ignore
+
+try:
+    import psutil
+except ImportError:
+    psutil = None  # type: ignore
+
+
+def get_optimal_cache_memory_mb() -> int:
+    """Calculate optimal cache memory based on available system RAM.
+    
+    Formula:
+    - Systems with < 4GB RAM: 256 MB (conservative)
+    - Systems with 4-8GB RAM: 512 MB (balanced)
+    - Systems with 8-16GB RAM: 1024 MB (generous)
+    - Systems with > 16GB RAM: 2048 MB (maximum performance)
+    
+    Returns:
+        Optimal cache memory in megabytes
+    """
+    if psutil is None:
+        # Fallback if psutil not available
+        return 512
+    
+    try:
+        # Get total system memory in MB
+        total_ram_mb = psutil.virtual_memory().total / (1024 * 1024)
+        
+        # Calculate based on tiers
+        if total_ram_mb < 4096:  # < 4GB
+            return 256
+        elif total_ram_mb < 8192:  # 4-8GB
+            return 512
+        elif total_ram_mb < 16384:  # 8-16GB
+            return 1024
+        else:  # > 16GB
+            return 2048
+    except Exception:
+        # Fallback on any error
+        return 512
 
 
 def get_config_dir() -> Path:
@@ -45,6 +85,18 @@ class Config:
             "last_output_dir": "",
             "last_tags_file": "",
         },
+        "database": {
+            # Database version: 13 or 16
+            # Version 16 is newer and recommended for recent Rockbox builds
+            "version": 16,
+        },
+        "performance": {
+            # Maximum memory usage for tag cache in megabytes
+            # Set to None for automatic detection based on system RAM
+            # Manual values: 256-2048 MB recommended
+            # Auto-detection: 256MB (<4GB RAM), 512MB (4-8GB), 1024MB (8-16GB), 2048MB (>16GB)
+            "tag_cache_memory_mb": None,  # Auto-detect by default
+        },
         "formats": {
             # Default format strings for each field
             "artist": "%artist%",
@@ -64,7 +116,8 @@ class Config:
     def __init__(self):
         """Initialize configuration manager."""
         self.config_path = get_config_path()
-        self.data: Dict[str, Any] = self.DEFAULT_CONFIG.copy()
+        self.data: Dict[str, Any] = copy.deepcopy(self.DEFAULT_CONFIG)  # Deep copy to avoid modifying class default
+        self._dirty = False  # Track if config has been modified
         self.load()
 
     def load(self) -> bool:
@@ -81,17 +134,25 @@ class Config:
                 loaded_data = tomllib.load(f)
                 # Merge with defaults (in case new keys were added)
                 self._merge_config(self.data, loaded_data)
+            self._dirty = False  # Config is clean after loading
             return True
         except Exception as e:
             print(f"Error loading config: {e}")
             return False
 
-    def save(self) -> bool:
+    def save(self, force: bool = False) -> bool:
         """Save configuration to file.
+        
+        Args:
+            force: If True, save even if config hasn't been modified
 
         Returns:
             True if saved successfully, False otherwise
         """
+        if not force and not self._dirty:
+            # No changes to save
+            return True
+        
         if tomli_w is None:
             print("Warning: TOML writer not available, config not saved")
             return False
@@ -99,6 +160,7 @@ class Config:
         try:
             with open(self.config_path, "wb") as f:
                 tomli_w.dump(self.data, f)
+            self._dirty = False  # Clear dirty flag after successful save
             return True
         except Exception as e:
             print(f"Error saving config: {e}")
@@ -111,6 +173,14 @@ class Config:
                 self._merge_config(base[key], value)
             else:
                 base[key] = value
+    
+    def is_dirty(self) -> bool:
+        """Check if configuration has been modified.
+        
+        Returns:
+            True if config has unsaved changes, False otherwise
+        """
+        return self._dirty
 
     # Window settings
     def get_window_size(self) -> Tuple[int, int]:
@@ -121,6 +191,7 @@ class Config:
         """Save window size."""
         self.data["window"]["width"] = width
         self.data["window"]["height"] = height
+        self._dirty = True
 
     def get_window_position(self) -> Tuple[int, int]:
         """Get saved window position."""
@@ -130,6 +201,7 @@ class Config:
         """Save window position."""
         self.data["window"]["x"] = x
         self.data["window"]["y"] = y
+        self._dirty = True
 
     # Path settings
     def get_last_music_dir(self) -> str:
@@ -139,6 +211,7 @@ class Config:
     def set_last_music_dir(self, path: str) -> None:
         """Save last used music directory."""
         self.data["paths"]["last_music_dir"] = path
+        self._dirty = True
 
     def get_last_output_dir(self) -> str:
         """Get last used output directory."""
@@ -147,6 +220,7 @@ class Config:
     def set_last_output_dir(self, path: str) -> None:
         """Save last used output directory."""
         self.data["paths"]["last_output_dir"] = path
+        self._dirty = True
 
     def get_last_tags_file(self) -> str:
         """Get last used tags file."""
@@ -155,6 +229,7 @@ class Config:
     def set_last_tags_file(self, path: str) -> None:
         """Save last used tags file."""
         self.data["paths"]["last_tags_file"] = path
+        self._dirty = True
 
     # Format settings
     def get_format(self, field: str) -> str:
@@ -164,6 +239,7 @@ class Config:
     def set_format(self, field: str, format_str: str) -> None:
         """Save format string for a field."""
         self.data["formats"][field] = format_str
+        self._dirty = True
 
     def get_sort_format(self, field: str) -> str:
         """Get sort format string for a field."""
@@ -172,6 +248,7 @@ class Config:
     def set_sort_format(self, field: str, format_str: str) -> None:
         """Save sort format string for a field."""
         self.data["sort_formats"][field] = format_str
+        self._dirty = True
 
     def get_all_formats(self) -> Dict[str, str]:
         """Get all format strings."""
@@ -180,3 +257,57 @@ class Config:
     def get_all_sort_formats(self) -> Dict[str, str]:
         """Get all sort format strings."""
         return self.data["sort_formats"].copy()
+
+    # Database settings
+    def get_database_version(self) -> int:
+        """Get database version (13 or 16).
+        
+        Returns:
+            Database version number (defaults to 16 if not configured)
+        """
+        return self.data.get("database", {}).get("version", 16)
+
+    def set_database_version(self, version: int) -> None:
+        """Set database version.
+        
+        Args:
+            version: Database version (13 or 16)
+        """
+        if "database" not in self.data:
+            self.data["database"] = {}
+        self.data["database"]["version"] = version
+        self._dirty = True
+
+    # Performance settings
+    def get_tag_cache_memory(self) -> int:
+        """Get maximum tag cache memory in MB.
+        
+        If not explicitly configured (None), automatically calculates
+        based on available system RAM.
+        
+        Returns:
+            Maximum memory in megabytes
+        """
+        configured_value = self.data.get("performance", {}).get("tag_cache_memory_mb")
+        
+        # If None or not set, auto-detect
+        if configured_value is None:
+            return get_optimal_cache_memory_mb()
+        
+        return configured_value
+
+    def set_tag_cache_memory(self, memory_mb: int) -> None:
+        """Set maximum tag cache memory.
+        
+        Args:
+            memory_mb: Maximum memory in megabytes (recommended: 256-2048)
+        
+        Raises:
+            ValueError: If memory_mb is less than 100
+        """
+        if memory_mb < 100:
+            raise ValueError("Cache memory must be at least 100 MB")
+        if "performance" not in self.data:
+            self.data["performance"] = {}
+        self.data["performance"]["tag_cache_memory_mb"] = memory_mb
+        self._dirty = True

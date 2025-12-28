@@ -1,8 +1,8 @@
-import os
+from pathlib import Path
 import struct
 from operator import attrgetter
 
-from .defs import MAGIC, ENCODING, SUPPORTED_VERSIONS
+from ...constants import MAGIC, ENCODING, SUPPORTED_VERSIONS
 
 class TagFile:
     def __init__(self, entries=None):
@@ -51,7 +51,7 @@ class TagFile:
         Args:
             filename: Path to write the tag file
             buffer_size: Optional buffer size in bytes. If None, uses system default.
-                        Recommended: 8192 (8KB) for optimal performance.
+                        Recommended: 262144 (256KB) for optimal performance on modern systems.
         """
         if buffer_size is not None:
             with open(filename, 'wb', buffering=buffer_size) as f:
@@ -121,7 +121,7 @@ class TagFile:
             PermissionError: If file cannot be read
         """
         if is_path is None:
-            base = os.path.basename(filename)
+            base = Path(filename).name
             if base.startswith('database_'):
                 is_path = (base[9:] == '4.tcd')
             else:
@@ -235,9 +235,11 @@ class TagEntry:
     @staticmethod
     def from_file(f, is_path=False):
         """Return a TagFile given a file object."""
+        # Store offset BEFORE reading header to match how it's written in to_file()
+        offset_before = f.tell()
         length, index = struct.unpack('II', f.read(4 * 2))
         entry = TagEntry()
-        entry.offset = f.tell()
+        entry.offset = offset_before
         entry.raw_data = f.read(length)
         entry.index = index
         entry.is_path = is_path
