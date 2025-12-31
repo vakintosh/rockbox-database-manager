@@ -6,7 +6,7 @@ A Python-based utility to accelerate Rockbox library management by generating da
 ---
 ## Credits & History
 
-### Original Author (2009)
+### Original Project (2009)
 **Mike Richards** - Original Python 2.x Gui implementation with wxPython. See [Legacy Codebase](Legacy_Codebase)
 
 ---
