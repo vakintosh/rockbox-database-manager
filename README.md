@@ -476,9 +476,6 @@ open htmlcov/index.html
 # Run linter
 uv run ruff check src/ tests/
 
-# Run type checker
-uv run mypy src/
-
 # Format code
 uv run ruff format src/ tests/
 ```
@@ -579,10 +576,6 @@ Contributions are welcome! Please ensure:
    uv run ruff check src/ tests/
    ```
 
-4. **Type checking passes:**
-   ```bash
-   uv run mypy src/
-   ```
 
 5. **New features include tests**
 
@@ -610,8 +603,6 @@ uv run pytest -v
 # Run linter
 uv run ruff check src/ tests/
 
-# Run type checker
-uv run mypy src/
 ```
 
 ### Pre-commit Hooks
