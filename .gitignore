@@ -19,6 +19,7 @@ coverage.xml
 # Test/profiling artifacts
 .rockbox
 music_test_folder
+Docker
 
 # Virtual environments
 .venv
