@@ -4,12 +4,6 @@ A Python-based utility to accelerate Rockbox library management by generating da
 [![License](https://img.shields.io/badge/license-GPL%20v2-blue.svg)](LICENSE)
 
 ---
-## Credits & History
-
-### Original Project (2009)
-**Mike Richards** - Original Python 2.x Gui implementation with wxPython. See [Legacy Codebase](Legacy_Codebase)
-
----
 
 ## Features
 
@@ -32,7 +26,7 @@ Based on the original 2009 Python 2.x GUI implementation by **Mike Richards** an
 
 **Tested on:**
 - ✅ macOS Sonoma 14.8.3 (Intel Mac)
-- ✅ maOS Tahoe 26.1 (Apple Silicon Macs)
+- ✅ maOS Tahoe 26.1 (Apple Silicon)
 - ✅ Ubuntu 24.04 LTS (Kernel 6.17.0, aarch64 / Raspberry Pi)
 - 🔄 Windows (in progress)
 
