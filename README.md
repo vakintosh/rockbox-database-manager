@@ -6,7 +6,7 @@ A Python-based utility to accelerate Rockbox library management by generating da
 ---
 ## Credits & History
 
-### Original Author (2009)
+### Original Project (2009)
 **Mike Richards** - Original Python 2.x Gui implementation with wxPython. See [Legacy Codebase](Legacy_Codebase)
 
 ---
@@ -70,8 +70,8 @@ A Python-based utility to accelerate Rockbox library management by generating da
 docker build -t rockbox-db-manager .
 
 # Generate database
-docker run -v /path/to/music:/music -v /path/to/output:/output \
-  rockbox-db-manager rdbm generate /music -o /output
+docker run -v /path/to/music:/input -v /path/to/output:/output \
+  rockbox-db-manager rdbm generate --music-dir /input --output /output
 
 # Validate database
 docker run -v /path/to/output:/output \
@@ -86,7 +86,7 @@ docker run -v /path/to/output:/output \
   rockbox-db-manager rdbm inspect /output/database_0.tcd
 
 # Interactive shell
-docker run -it -v /path/to/music:/music rockbox-db-manager bash
+docker run -it -v /path/to/music:/input rockbox-db-manager bash
 ```
 
 ### Using UV (Recommended)
@@ -140,20 +140,20 @@ rockbox-db-manager-gui
 ### Generate a Database
 
 ```bash
-# Basic generation
-rdbm generate /path/to/music
+# Basic generation (requires both --music-dir and --output)
+rdbm generate --music-dir /path/to/music --output /path/to/.rockbox
 
 # With custom output location
-rdbm generate /path/to/music -o /Volumes/IPOD/.rockbox
+rdbm generate --music-dir /path/to/music --output /Volumes/IPOD/.rockbox
 
 # Using configuration file
-rdbm generate /path/to/music -c ~/.rdbm/.rdbm_config.toml
+rdbm generate --music-dir /path/to/music --output /output --config ~/.rdbm/.rdbm_config.toml
 
 # With tag caching for faster regeneration
-rdbm generate /path/to/music --save-tags ~/.rockbox_tags.cache
+rdbm generate --music-dir /path/to/music --output /output --save-tags ~/.rockbox_tags.cache
 
 # Quick regeneration using cached tags
-rdbm generate /path/to/music --load-tags ~/.rockbox_tags.cache.gz
+rdbm generate --music-dir /path/to/music --output /output --load-tags ~/.rockbox_tags.cache.gz
 ```
 
 ### Inspect a Database
@@ -188,11 +188,12 @@ The `rdbm` command provides comprehensive database management:
 Create Rockbox database files from a music folder:
 
 ```bash
-# Basic usage
-rdbm generate /path/to/music
+# Basic usage (both flags required)
+rdbm generate --music-dir /path/to/music --output /path/to/.rockbox
 
 # All options
-rdbm generate /path/to/music \
+rdbm generate \
+  --music-dir /path/to/music \
   --output /Volumes/IPOD/.rockbox \
   --config ~/.rdbm/.rdbm_config.toml \
   --load-tags ~/.rockbox_tags.cache \
@@ -201,12 +202,23 @@ rdbm generate /path/to/music \
 ```
 
 **Options:**
-- `music_path` - Path to music folder (required)
-- `-o, --output` - Output directory (default: `music_path/.rockbox`)
-- `-c, --config` - Configuration file path (default: `~/.rdbm/.rdbm_config.toml`)
-- `--load-tags` - Load tag cache file for faster generation
-- `--save-tags` - Save tag cache file for future use
-- `-l, --log-level` - Logging level: debug, info, warning, error (default: info)
+- `--music-dir` - Path to music folder (required)
+- `-o, --output` - Output directory for database files (required)
+- `-c, --config` - Configuration file path (optional)
+- `--load-tags` - Load tag cache file for faster generation (optional)
+- `--save-tags` - Save tag cache file for future use (optional)
+- `--no-parallel` - Disable parallel processing (optional)
+- `--workers N` - Number of worker threads (optional, default: CPU count)
+- `-l, --log-level` - Logging level: debug, info, warning, error (default: critical)
+
+**Exit Codes:**
+- `0` - Success
+- `10` - Invalid input (missing/invalid directories)
+- `11` - Invalid configuration file
+- `20` - Data errors (corrupt files, missing tags)
+- `30` - Database generation failed
+- `32` - Database write failed
+- `41` - Operation cancelled (Ctrl+C)
 
 **Example Output:**
 
@@ -274,6 +286,11 @@ Check database integrity and structure:
 ```bash
 rdbm validate /Volumes/IPOD/.rockbox
 ```
+
+**Exit Codes:**
+- `0` - Validation passed
+- `10` - Invalid input (directory doesn't exist)
+- `31` - Validation failed (database issues found)
 
 **Example Output:**
 
@@ -418,7 +435,7 @@ rdbm generate /path/to/music -c /path/to/custom_config.toml
 cp .rdbm_config_example.toml ~/.rdbm/.rdbm_config.toml
 
 # Edit for your needs
-nano ~/.rdbm/.rdbm_config.toml
+vim ~/.rdbm/.rdbm_config.toml
 
 # Use with generate
 rdbm generate /path/to/music -c ~/.rdbm/.rdbm_config.toml
@@ -607,7 +624,6 @@ This project uses [pre-commit](https://pre-commit.com/) to ensure code quality. 
 - **end-of-file-fixer** - Ensures files end with a newline
 - **check-yaml** - Validates YAML syntax
 - **check-added-large-files** - Prevents committing large files
-- **mypy** - Type checking
 - **pytest** - Runs tests before push (pre-push hook)
 
 **Setup:**

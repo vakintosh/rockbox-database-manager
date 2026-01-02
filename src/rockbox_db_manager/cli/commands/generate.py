@@ -19,6 +19,7 @@ from ...database import Database
 from ...database.cache import TagCache
 from ...config import Config
 from ..callbacks import ProgressCallback, log_callback
+from ..utils import ExitCode
 
 
 def cmd_generate(args: argparse.Namespace) -> None:
@@ -26,16 +27,25 @@ def cmd_generate(args: argparse.Namespace) -> None:
 
     Args:
         args: Parsed command-line arguments
+
+    Exit Codes:
+        0: Success
+        10: Invalid input (missing/invalid directories)
+        11: Invalid configuration file
+        20: Data errors (corrupt files, missing tags)
+        30: Database generation failed
+        32: Database write failed
+        41: Operation cancelled (Ctrl+C)
     """
-    music_path = Path(args.music_path)
+    music_path = Path(args.music_dir).resolve()
 
     if not music_path.exists():
         logging.error("Music path does not exist: %s", music_path)
-        sys.exit(1)
+        sys.exit(ExitCode.INVALID_INPUT)
 
     if not music_path.is_dir():
         logging.error("Music path is not a directory: %s", music_path)
-        sys.exit(1)
+        sys.exit(ExitCode.INVALID_INPUT)
 
     logging.info("Generating database from: %s", music_path)
 
@@ -56,7 +66,7 @@ def cmd_generate(args: argparse.Namespace) -> None:
         config_path = Path(args.config)
         if not config_path.exists():
             logging.error("Config file does not exist: %s", config_path)
-            sys.exit(1)
+            sys.exit(ExitCode.INVALID_CONFIG)
 
         logging.info("Loading configuration from: %s", config_path)
         config = Config()
@@ -108,27 +118,36 @@ def cmd_generate(args: argparse.Namespace) -> None:
     console = Console()
 
     # Always show progress bar with message and timer
-    with Progress(
-        TextColumn("[cyan]Scanning music directory..."),
-        TimeElapsedColumn(),
-        console=console,
-    ) as progress:
-        # Scanning task - message and timer only
-        scan_task = progress.add_task("", total=None)
-        callback = ProgressCallback(progress, scan_task)
+    try:
+        with Progress(
+            TextColumn("[cyan]Scanning music directory..."),
+            TimeElapsedColumn(),
+            console=console,
+        ) as progress:
+            # Scanning task - message and timer only
+            scan_task = progress.add_task("", total=None)
+            callback = ProgressCallback(progress, scan_task)
 
-        parallel_flag = not (hasattr(args, "no_parallel") and args.no_parallel)
-        db.add_dir(
-            str(music_path),
-            dircallback=callback,
-            filecallback=callback,
-            parallel=parallel_flag,
-        )
+            parallel_flag = not (hasattr(args, "no_parallel") and args.no_parallel)
+            db.add_dir(
+                str(music_path),
+                dircallback=callback,
+                filecallback=callback,
+                parallel=parallel_flag,
+            )
 
-        progress.update(scan_task, total=callback.count, completed=callback.count)
+            progress.update(scan_task, total=callback.count, completed=callback.count)
+    except Exception as e:
+        logging.error("Failed to scan music directory: %s", e)
+        sys.exit(ExitCode.DATA_ERROR)
 
     total_files = len(db.paths)
     failed_files = len(db.failed)
+
+    if total_files == 0:
+        logging.error("No music files found in: %s", music_path)
+        sys.exit(ExitCode.DATA_ERROR)
+
     console.print(
         f"\n[green]✓[/green] Scanned {total_files} files ({failed_files} failed)"
     )
@@ -168,47 +187,60 @@ def cmd_generate(args: argparse.Namespace) -> None:
         )
 
     # Generate database
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[cyan]Generating database entries..."),
-        BarColumn(),
-        TextColumn("{task.completed}/{task.total}"),
-        console=console,
-    ) as progress:
-        gen_task = progress.add_task("generate", total=total_files)
+    try:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[cyan]Generating database entries..."),
+            BarColumn(),
+            TextColumn("{task.completed}/{task.total}"),
+            console=console,
+        ) as progress:
+            gen_task = progress.add_task("generate", total=total_files)
 
-        def gen_callback(current_count, total_count):
-            progress.update(gen_task, completed=current_count)
+            def gen_callback(current_count, total_count):
+                progress.update(gen_task, completed=current_count)
 
-        parallel_flag = not (hasattr(args, "no_parallel") and args.no_parallel)
-        db.generate_database(callback=gen_callback, parallel=parallel_flag)
+            parallel_flag = not (hasattr(args, "no_parallel") and args.no_parallel)
+            db.generate_database(callback=gen_callback, parallel=parallel_flag)
+    except Exception as e:
+        logging.error("Database generation failed: %s", e)
+        sys.exit(ExitCode.GENERATION_FAILED)
 
     console.print(f"[green]✓[/green] Generated {db.index.count} database entries")
 
     # Write database to output directory
     if args.output:
-        output_path = Path(args.output)
+        output_path = Path(args.output).resolve()
     else:
         output_path = music_path / ".rockbox"
 
-    output_path.mkdir(parents=True, exist_ok=True)
+    # Validate output directory can be created
+    try:
+        output_path.mkdir(parents=True, exist_ok=True)
+    except Exception as e:
+        logging.error("Cannot create output directory %s: %s", output_path, e)
+        sys.exit(ExitCode.INVALID_INPUT)
 
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[cyan]Writing database files..."),
-        BarColumn(),
-        TextColumn("{task.completed}/{task.total} files"),
-        console=console,
-    ) as progress:
-        write_task = progress.add_task("write", total=10)  # 9 tag files + 1 index
+    try:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[cyan]Writing database files..."),
+            BarColumn(),
+            TextColumn("{task.completed}/{task.total} files"),
+            console=console,
+        ) as progress:
+            write_task = progress.add_task("write", total=10)  # 9 tag files + 1 index
 
-        def write_callback(msg, **kwargs):
-            if "done" in str(msg):
-                progress.advance(write_task, 1)
-            elif logging.getLogger().level <= logging.DEBUG:
-                log_callback(msg, **kwargs)
+            def write_callback(msg, **kwargs):
+                if "done" in str(msg):
+                    progress.advance(write_task, 1)
+                elif logging.getLogger().level <= logging.DEBUG:
+                    log_callback(msg, **kwargs)
 
-        db.write(str(output_path), callback=write_callback)
+            db.write(str(output_path), callback=write_callback)
+    except Exception as e:
+        logging.error("Failed to write database: %s", e)
+        sys.exit(ExitCode.WRITE_FAILED)
 
     console.print("[green]✓[/green] Database generation complete")
 
@@ -231,3 +263,12 @@ def cmd_generate(args: argparse.Namespace) -> None:
                 logging.debug("  Failed: %s", failed_file)
 
     console.print(table)
+
+    # Exit with appropriate code
+    if failed_files > total_files * 0.1:  # More than 10% failed
+        logging.warning(
+            "High failure rate: %s/%s files failed", failed_files, total_files
+        )
+        sys.exit(ExitCode.DATA_ERROR)
+
+    sys.exit(ExitCode.SUCCESS)

@@ -18,8 +18,9 @@ import logging
 import sys
 
 from rich_argparse import RichHelpFormatter
+from pathlib import Path
 
-from .utils import setup_logging
+from .utils import setup_logging, ExitCode
 from .commands import (
     cmd_generate,
     cmd_load,
@@ -107,24 +108,30 @@ def main() -> None:
     generate_parser = subparsers.add_parser(
         "generate",
         help="Generate Rockbox database from music folder",
-        usage="rdbm generate <music_path> [options]",
+        usage="rdbm generate --music-dir <path/to/source/music/dir> --output <path/to/target/database/dir> [options]",
         description="Scan music folder and generate Rockbox database files",
         parents=[parent_parser],
         formatter_class=RichHelpFormatter,
     )
-    generate_parser.add_argument("music_path", help="Path to music folder to scan")
+    generate_parser.add_argument(
+        "--music-dir", type=Path, required=True, help="Path to music directory to scan"
+    )
     generate_parser.add_argument(
         "-o",
         "--output",
-        help="Output directory for database files (default: music_path/.rockbox)",
+        type=Path,
+        required=True,
+        help="Target directory for database files",
     )
     generate_parser.add_argument("-c", "--config", help="Path to configuration file")
     generate_parser.add_argument(
         "--load-tags",
+        type=Path,
         help="Load tags from cache file (speeds up regeneration)",
     )
     generate_parser.add_argument(
         "--save-tags",
+        type=Path,
         help="Save tags to cache file for future use",
     )
     generate_parser.add_argument(
@@ -271,7 +278,7 @@ def main() -> None:
     # Show help if no command is provided
     if not args.command:
         parser.print_help()
-        sys.exit(1)
+        sys.exit(ExitCode.SUCCESS)
 
     # Logging setup
     if args.log_level:
@@ -292,17 +299,17 @@ def main() -> None:
         logging.debug("Tag cache memory limit set to: %s MB", cache_memory)
     except ValueError as e:
         logging.error("Invalid cache memory limit: %s", e)
-        sys.exit(1)
+        sys.exit(ExitCode.INTERNAL_ERROR)
 
     # Execute command
     try:
         args.func(args)
     except KeyboardInterrupt:
         logging.info("\nOperation cancelled by user")
-        sys.exit(130)
+        sys.exit(ExitCode.CANCELLED)
     except Exception as e:
         logging.error("Error: %s", e, exc_info=args.log_level == "debug")
-        sys.exit(1)
+        sys.exit(ExitCode.INTERNAL_ERROR)
 
 
 if __name__ == "__main__":

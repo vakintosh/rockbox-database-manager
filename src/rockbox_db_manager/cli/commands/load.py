@@ -8,6 +8,7 @@ from pathlib import Path
 from ...database import Database
 from ..callbacks import log_callback
 from ...constants import FILE_TAGS
+from ..utils import ExitCode
 
 
 def cmd_load(args: argparse.Namespace) -> None:
@@ -15,16 +16,21 @@ def cmd_load(args: argparse.Namespace) -> None:
 
     Args:
         args: Parsed command-line arguments
+
+    Exit Codes:
+        0: Success
+        10: Invalid input (directory doesn't exist)
+        20: Data error (failed to load database)
     """
-    db_path = Path(args.database_path)
+    db_path = Path(args.database_path).resolve()
 
     if not db_path.exists():
         logging.error("Database path does not exist: %s", db_path)
-        sys.exit(1)
+        sys.exit(ExitCode.INVALID_INPUT)
 
     if not db_path.is_dir():
         logging.error("Database path is not a directory: %s", db_path)
-        sys.exit(1)
+        sys.exit(ExitCode.INVALID_INPUT)
 
     logging.info("Loading database from: %s", db_path)
 
