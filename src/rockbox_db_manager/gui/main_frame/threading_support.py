@@ -2,6 +2,9 @@
 
 This module provides the infrastructure for running database operations
 in background threads while keeping the GUI responsive.
+
+Note: This module requires wxPython. It should only be imported when
+wxPython is available (checked via gui.__init__.is_wxpython_available()).
 """
 
 import sys
@@ -11,7 +14,13 @@ from typing import Callable, Optional, Any, Dict
 
 from ..error_handling import show_error_dialog
 from ..thread_events import ThreadEvent
-import wx
+
+try:
+    import wx
+except ImportError as e:
+    raise ImportError(
+        "This module requires wxPython. Install with: pip install rockbox-db-manager[gui]"
+    ) from e
 
 
 class CancellableThread(threading.Thread):

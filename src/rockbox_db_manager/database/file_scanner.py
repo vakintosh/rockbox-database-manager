@@ -312,8 +312,9 @@ class FileScanner:
         # Collect all files first for parallel processing
         all_files = []
         for root, dirs, files in os.walk(original_root):
+            dirs.sort()
             dircallback(root)
-            for file in files:
+            for file in sorted(files):
                 file_path = Path(root) / file
                 if file_path.suffix.lower() not in self.supported_extensions:
                     continue

@@ -13,8 +13,8 @@ def setup_all_mappings():
 
 
 __all__ = [
-    'setup_default_mappings',
-    'setup_format_specific_mappings',
-    'setup_id3_mappings',
-    'setup_all_mappings',
+    "setup_default_mappings",
+    "setup_format_specific_mappings",
+    "setup_id3_mappings",
+    "setup_all_mappings",
 ]

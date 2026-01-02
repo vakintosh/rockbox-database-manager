@@ -10,4 +10,4 @@ This package splits the large MyFrame class into focused, manageable modules:
 
 from .frame import MyFrame
 
-__all__ = ['MyFrame']
+__all__ = ["MyFrame"]

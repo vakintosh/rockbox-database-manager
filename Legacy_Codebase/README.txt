@@ -131,4 +131,3 @@ The View tab is where you can examine the contents of the rockbox database.
 The first three panes allow you to select the field you'd like to view (the
 last pane is always set on "title").  At the bottom is a display showing what
 the tanavi syntax for the displayed database view would be.
-

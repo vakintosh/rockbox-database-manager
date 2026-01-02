@@ -1,31 +1,31 @@
 FILE_TAGS = [
-    'artist',
-    'album',
-    'genre',
-    'title',
-    'path',
-    'composer',
-    'comment',
-    'album artist',
-    'grouping',
+    "artist",
+    "album",
+    "genre",
+    "title",
+    "path",
+    "composer",
+    "comment",
+    "album artist",
+    "grouping",
 ]
 
 EMBEDDED_TAGS = [
-    'date',
-    'discnumber',
-    'tracknumber',
-    'bitrate',
-    'length',
-    'playcount',
-    'rating',
-    'playtime',
-    'lastplayed',
-    'commitid',
-    'mtime',
-    'flag',
-    'reserved1',  # Reserved field for future Rockbox features
-    'reserved2',  # Reserved field for future Rockbox features
-    'reserved3',  # Reserved field for future Rockbox features
+    "date",
+    "discnumber",
+    "tracknumber",
+    "bitrate",
+    "length",
+    "playcount",
+    "rating",
+    "playtime",
+    "lastplayed",
+    "commitid",
+    "mtime",
+    "flag",
+    "reserved1",  # Reserved field for future Rockbox features
+    "reserved2",  # Reserved field for future Rockbox features
+    "reserved3",  # Reserved field for future Rockbox features
 ]
 
 FORMATTED_TAGS = FILE_TAGS[:3] + FILE_TAGS[5:]
@@ -41,4 +41,4 @@ TAGS = FILE_TAGS + EMBEDDED_TAGS
 MAGIC = 1413695504  # Fallback default (version 16)
 SUPPORTED_VERSIONS = [1413695501, 1413695504]  # Versions 13 and 16
 
-ENCODING = 'utf-8'
+ENCODING = "utf-8"

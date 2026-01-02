@@ -109,7 +109,7 @@ class IndexEntry(dict):
     @staticmethod
     def from_file(f, tagfiles):
         """Read the index entry from a file.
-         
+
         If tagfiles is a dictionary of { field: TagFile } pairs, which will be
         used to extract the actual TagEntry for each offset in the file.
 

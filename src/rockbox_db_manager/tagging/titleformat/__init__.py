@@ -32,10 +32,10 @@ from .function import Function
 @functools.lru_cache(maxsize=512)
 def compile(format_string):
     """Compile a format string into a Statement object.
-    
+
     Args:
         format_string: Foobar2000-style format string
-        
+
     Returns:
         Statement object that can be evaluated with tags
     """
@@ -45,11 +45,11 @@ def compile(format_string):
 
 def format(format_string, tags):
     """Format tags using a format string.
-    
+
     Args:
         format_string: Foobar2000-style format string
         tags: Tag object containing audio metadata
-        
+
     Returns:
         Formatted string with tag values substituted
     """
@@ -57,14 +57,14 @@ def format(format_string, tags):
 
 
 __all__ = [
-    'compile',
-    'format',
-    'Statement',
-    'Conditional',
-    'Field',
-    'String',
-    'Function',
-    'base',
-    'tagbool',
-    'utils',
+    "compile",
+    "format",
+    "Statement",
+    "Conditional",
+    "Field",
+    "String",
+    "Function",
+    "base",
+    "tagbool",
+    "utils",
 ]

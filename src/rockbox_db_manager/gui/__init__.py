@@ -16,50 +16,87 @@ Modules:
     info_panel.py: Progress tracking UI components
     error_handling.py: Error dialogs and validation
     thread_events.py: Custom threading events for wxPython
+
+Note: wxPython is an optional dependency. Install with: pip install rockbox-db-manager[gui]
 """
 
-from .app import MyApp, main
-from .main_frame import MyFrame
-from .field_panes import FieldPane, FieldPanePanel
-from .error_handling import (
-    show_error_dialog,
-    show_warning_dialog,
-    validate_path,
-    validate_format_string,
-)
-from .thread_events import (
-    ThreadEvent,
-    EVT_THREAD_START,
-    EVT_THREAD_CALLBACK,
-    EVT_THREAD_END,
-)
-from .info_panel import InfoPanel, Info
-from .async_operations import (
-    AsyncIOSupport,
-    AsyncDatabaseOperations,
-    create_progress_callback,
-)
-from .cancellable_progress import CancellableProgressDialog, NonModalProgressDialog
+# Check if wxPython is available
+import importlib.util
 
-__all__ = [
-    "MyApp",
-    "main",
-    "MyFrame",
-    "FieldPane",
-    "FieldPanePanel",
-    "show_error_dialog",
-    "show_warning_dialog",
-    "validate_path",
-    "validate_format_string",
-    "ThreadEvent",
-    "EVT_THREAD_START",
-    "EVT_THREAD_CALLBACK",
-    "EVT_THREAD_END",
-    "InfoPanel",
-    "Info",
-    "AsyncIOSupport",
-    "AsyncDatabaseOperations",
-    "create_progress_callback",
-    "CancellableProgressDialog",
-    "NonModalProgressDialog",
-]
+_WXPYTHON_AVAILABLE = importlib.util.find_spec("wx") is not None
+
+
+def is_wxpython_available() -> bool:
+    """Check if wxPython is available.
+
+    Returns:
+        True if wxPython can be imported, False otherwise.
+    """
+    return _WXPYTHON_AVAILABLE
+
+
+# Only import GUI components if wxPython is available
+if _WXPYTHON_AVAILABLE:
+    from .app import MyApp, main
+    from .main_frame import MyFrame
+    from .field_panes import FieldPane, FieldPanePanel
+    from .error_handling import (
+        show_error_dialog,
+        show_warning_dialog,
+        validate_path,
+        validate_format_string,
+    )
+    from .thread_events import (
+        ThreadEvent,
+        EVT_THREAD_START,
+        EVT_THREAD_CALLBACK,
+        EVT_THREAD_END,
+    )
+    from .info_panel import InfoPanel, Info
+    from .async_operations import (
+        AsyncIOSupport,
+        AsyncDatabaseOperations,
+        create_progress_callback,
+    )
+    from .cancellable_progress import CancellableProgressDialog, NonModalProgressDialog
+
+    __all__ = [
+        "MyApp",
+        "main",
+        "MyFrame",
+        "FieldPane",
+        "FieldPanePanel",
+        "show_error_dialog",
+        "show_warning_dialog",
+        "validate_path",
+        "validate_format_string",
+        "ThreadEvent",
+        "EVT_THREAD_START",
+        "EVT_THREAD_CALLBACK",
+        "EVT_THREAD_END",
+        "InfoPanel",
+        "Info",
+        "AsyncIOSupport",
+        "AsyncDatabaseOperations",
+        "create_progress_callback",
+        "CancellableProgressDialog",
+        "NonModalProgressDialog",
+        "is_wxpython_available",
+    ]
+else:
+    # Provide a stub main function that gives a helpful error message
+    def main():
+        """GUI entry point that requires wxPython."""
+        import sys
+
+        print(
+            "Error: wxPython is not installed.\n"
+            "The GUI requires wxPython, which is an optional dependency.\n\n"
+            "To install it, run:\n"
+            "  pip install rockbox-db-manager[gui]\n\n"
+            "Or use the CLI tool 'rdbm' instead, which works without wxPython.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    __all__ = ["main", "is_wxpython_available"]

@@ -2,9 +2,17 @@
 
 This module provides widgets for displaying operation progress,
 including gauges, timers, and status messages.
+
+Note: This module requires wxPython. It should only be imported when
+wxPython is available (checked via gui.__init__.is_wxpython_available()).
 """
 
-import wx
+try:
+    import wx
+except ImportError as e:
+    raise ImportError(
+        "This module requires wxPython. Install with: pip install rockbox-db-manager[gui]"
+    ) from e
 
 
 class InfoPanel(wx.ScrolledWindow):

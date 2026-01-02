@@ -39,7 +39,7 @@ from indexfile import IndexFile, IndexEntry
 
 def myprint(*args, **kwargs):
     """Emulates the print() function.
-    
+
     Arguments that cannot be printed are converted using repr()
 
     This is used as the default callback function for Dabatabase functions
@@ -172,7 +172,7 @@ class Database(object):
         Add or update the tag_cache, and add the path to the files set.  If
         mtime is more recent than the cached mtime, the tags will be updated.
 
-        A file will be read only if the tags argument is None.        
+        A file will be read only if the tags argument is None.
 
         """
 

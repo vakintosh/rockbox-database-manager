@@ -29,7 +29,9 @@ class ProgressCallback:
             if path_obj.is_dir():
                 self.last_dir = path_obj.name
                 self.count = 0
-                self.progress.update(self.task_id, description=f"[cyan]Scanning: {self.last_dir}...")
+                self.progress.update(
+                    self.task_id, description=f"[cyan]Scanning: {self.last_dir}..."
+                )
             else:
                 self.count += 1
                 self.progress.advance(self.task_id, 1)
@@ -53,4 +55,6 @@ class SilentCallback:
             else:
                 self.count += 1
                 if self.count % 100 == 0:
-                    logging.info("Processed %s files from %s", self.count, self.last_dir)
+                    logging.info(
+                        "Processed %s files from %s", self.count, self.last_dir
+                    )

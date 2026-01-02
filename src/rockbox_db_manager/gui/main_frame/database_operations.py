@@ -2,10 +2,19 @@
 
 This module contains all the event handlers for database operations
 like loading, saving, generating, reading, and writing databases.
+
+Note: This module requires wxPython. It should only be imported when
+wxPython is available (checked via gui.__init__.is_wxpython_available()).
 """
 
 from pathlib import Path
-import wx
+
+try:
+    import wx
+except ImportError as e:
+    raise ImportError(
+        "This module requires wxPython. Install with: pip install rockbox-db-manager[gui]"
+    ) from e
 
 from ..error_handling import show_error_dialog, validate_path
 from ..field_panes import DatabaseEvent
@@ -18,7 +27,7 @@ class DatabaseOperations:
 
     def __init__(self, frame):
         """Initialize database operations.
-        
+
         Args:
             frame: The MyFrame instance
         """
@@ -26,7 +35,7 @@ class DatabaseOperations:
 
     def on_load_tags(self, evt):
         """Handle Load Tags button click.
-        
+
         Args:
             evt: Button click event
         """
@@ -63,6 +72,7 @@ class DatabaseOperations:
 
         def OnEnd(evt):
             evt.info.timer.Stop()
+            evt.info.gauge = evt.info.gauge_ctrl.GetRange()  # Set to maximum
             evt.info.status = "Done"
             # Force the InfoPanel to re-layout and repaint immediately
             evt.info.parent.Layout()
@@ -80,7 +90,7 @@ class DatabaseOperations:
 
     def on_save_tags(self, evt):
         """Handle Save Tags button click.
-        
+
         Args:
             evt: Button click event
         """
@@ -101,6 +111,7 @@ class DatabaseOperations:
 
         def OnEnd(evt):
             evt.info.timer.Stop()
+            evt.info.gauge = evt.info.gauge_ctrl.GetRange()  # Set to maximum
             evt.info.status = "Done"
             # Force the InfoPanel to re-layout and repaint immediately
             evt.info.parent.Layout()
@@ -118,7 +129,7 @@ class DatabaseOperations:
 
     def on_add_directory(self, evt):
         """Handle Add Directory button click.
-        
+
         Args:
             evt: Button click event
         """
@@ -149,6 +160,7 @@ class DatabaseOperations:
 
         def OnEnd(evt):
             evt.info.timer.Stop()
+            evt.info.gauge = evt.info.gauge_ctrl.GetRange()  # Set to maximum
             evt.info.status = "Done"
             # Force the InfoPanel to re-layout and repaint immediately
             evt.info.parent.Layout()
@@ -168,7 +180,7 @@ class DatabaseOperations:
 
     def on_generate_database(self, evt):
         """Handle Generate Database button click.
-        
+
         Args:
             evt: Button click event
         """
@@ -208,6 +220,7 @@ class DatabaseOperations:
 
         def OnEnd(evt):
             evt.info.timer.Stop()
+            evt.info.gauge = evt.info.gauge_ctrl.GetRange()  # Set to maximum
             evt.info.status = "Done"
             # Force the InfoPanel to re-layout and repaint immediately
             evt.info.parent.Layout()
@@ -238,7 +251,7 @@ class DatabaseOperations:
 
     def on_write_database(self, evt):
         """Handle Write Database button click.
-        
+
         Args:
             evt: Button click event
         """
@@ -260,7 +273,9 @@ class DatabaseOperations:
             Path(write_dir).mkdir(parents=True, exist_ok=True)
         except OSError as e:
             show_error_dialog(
-                self.frame, "Directory Creation Failed", f"Could not create directory: {e}"
+                self.frame,
+                "Directory Creation Failed",
+                f"Could not create directory: {e}",
             )
             return
 
@@ -280,6 +295,7 @@ class DatabaseOperations:
 
         def OnEnd(evt):
             evt.info.timer.Stop()
+            evt.info.gauge = evt.info.gauge_ctrl.GetRange()  # Set to maximum
             evt.info.status = "Done"
             # Force the InfoPanel to re-layout and repaint immediately
             evt.info.parent.Layout()
@@ -298,7 +314,7 @@ class DatabaseOperations:
 
     def on_read_database(self, evt):
         """Handle Read Database button click.
-        
+
         Args:
             evt: Button click event
         """
@@ -329,6 +345,7 @@ class DatabaseOperations:
 
         def OnEnd(evt):
             evt.info.timer.Stop()
+            evt.info.gauge = evt.info.gauge_ctrl.GetRange()  # Set to maximum
             evt.info.status = "Done"
             # Force the InfoPanel to re-layout and repaint immediately
             evt.info.parent.Layout()

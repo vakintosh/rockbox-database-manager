@@ -2,10 +2,18 @@
 
 This module provides custom wxPython events for communicating between
 worker threads and the GUI thread.
+
+Note: This module requires wxPython. It should only be imported when
+wxPython is available (checked via gui.__init__.is_wxpython_available()).
 """
 
-import wx
-import wx.lib.newevent
+try:
+    import wx
+    import wx.lib.newevent
+except ImportError as e:
+    raise ImportError(
+        "This module requires wxPython. Install with: pip install rockbox-db-manager[gui]"
+    ) from e
 
 
 # wxPython Phoenix: Use wx.lib.newevent instead of deprecated wx.NewEventType/PyEventBinder
@@ -20,7 +28,7 @@ class ThreadEvent:
     @staticmethod
     def post_start(obj, handler, info):
         """Post a thread start event to the GUI thread.
-        
+
         Args:
             obj: The wx object to post the event to
             handler: The event handler function
@@ -33,7 +41,7 @@ class ThreadEvent:
     @staticmethod
     def post_end(obj, handler, info):
         """Post a thread end event to the GUI thread.
-        
+
         Args:
             obj: The wx object to post the event to
             handler: The event handler function
@@ -46,7 +54,7 @@ class ThreadEvent:
     @staticmethod
     def post_callback(obj, handler, info, message, *args, **kwargs):
         """Post a callback event to the GUI thread for progress updates.
-        
+
         Args:
             obj: The wx object to post the event to
             handler: The event handler function

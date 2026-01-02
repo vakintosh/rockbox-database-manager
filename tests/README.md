@@ -63,7 +63,7 @@ Example:
 ```python
 class TestMyFeature:
     """Test MyFeature functionality."""
-    
+
     def test_basic_operation(self):
         """Test that basic operation works."""
         result = my_function()

@@ -7,7 +7,7 @@ def conv_string(value: Any) -> str:
     """Convert a value to a comma-separated string."""
     if not isinstance(value, (list, tuple)):
         value = [value]
-    return ', '.join(str(v) for v in value)
+    return ", ".join(str(v) for v in value)
 
 
 def conv_number(value: Any) -> Union[int, float]:
@@ -25,11 +25,11 @@ def conv_number(value: Any) -> Union[int, float]:
 
     # Chop to the last non-numeric value
     value = value.strip()
-    sign = ''
-    if value.startswith('-') or value.startswith('+'):
+    sign = ""
+    if value.startswith("-") or value.startswith("+"):
         sign = value[0]
         value = value[1:]
-    i = find_first_not_of(value, '1234567890.')
+    i = find_first_not_of(value, "1234567890.")
     value = sign + value[:i]
 
     # Convert

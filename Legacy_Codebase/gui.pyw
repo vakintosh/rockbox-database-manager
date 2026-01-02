@@ -68,7 +68,7 @@ class InfoPanel(wx.ScrolledWindow):
 class RapidlyUpdatingText(wx.Window):
 
     """A very simple static text control.
-    
+
     wxStaticText tries to resize itself every time it is updated, which slows
     down the gui.
 
@@ -449,7 +449,7 @@ class FieldPane(wxFB_gui.FieldPane):
     def SetEntries(self, entries):
         self.entries = entries
         self.UpdateListBox()
-        
+
     def SetField(self, field):
         self.field = field.lower()
         self.choice.SetStringSelection(field)
@@ -530,7 +530,7 @@ class FieldPanePanel(wx.Panel):
         field_names = [name for name in field_names if name != '<None>']
 
         fields = [f.lower().replace(' ', '') for f in field_names]
-        
+
         tagnavi = '"%s" -> %s ' % (field_names[0], fields[0])
         if self.database is not None:
             tagnavi += '? '
