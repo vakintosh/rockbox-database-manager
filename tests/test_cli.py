@@ -1,20 +1,15 @@
 """Tests for the CLI module."""
 
 import pytest
-import time
 import struct
 import logging
 import json
 
-from pathlib import Path
-from unittest.mock import patch, Mock
-from argparse import Namespace
-from rich.console import Console
+from unittest.mock import patch
 
 from rockbox_db_manager.constants import MAGIC
 from rockbox_db_manager.cli import main, __version__
 from rockbox_db_manager.cli.utils import setup_logging
-from rockbox_db_manager.cli.commands.watch import MusicDirectoryEventHandler
 from rockbox_db_manager.cli.schemas import (
     ErrorResponse,
     ValidationSuccessResponse,
@@ -84,7 +79,7 @@ def test_load_help(capsys):
 
     assert exc_info.value.code == 0
     captured = capsys.readouterr()
-    assert "database_path" in captured.out
+    assert "--db-dir" in captured.out
 
 
 def test_write_help(capsys):
@@ -95,8 +90,8 @@ def test_write_help(capsys):
 
     assert exc_info.value.code == 0
     captured = capsys.readouterr()
-    assert "database_path" in captured.out
-    assert "output_path" in captured.out
+    assert "--db-dir" in captured.out
+    assert "--output" in captured.out
 
 
 def test_validate_help(capsys):
@@ -236,7 +231,7 @@ def test_generate_missing_path(capsys):
 def test_load_missing_path(capsys):
     """Test load command with non-existent path."""
     with pytest.raises(SystemExit) as exc_info:
-        with patch("sys.argv", ["rdbm", "load", "/nonexistent/path"]):
+        with patch("sys.argv", ["rdbm", "load", "--db-dir", "/nonexistent/path"]):
             main()
 
     assert exc_info.value.code == 10  # ExitCode.INVALID_INPUT
@@ -250,8 +245,8 @@ def test_inspect_help(capsys):
 
     assert exc_info.value.code == 0
     captured = capsys.readouterr()
-    assert "database_path" in captured.out
-    assert "file_number" in captured.out
+    assert "--db-dir" in captured.out
+    assert "--file-number" in captured.out
     assert "--quiet" in captured.out
     # assert '--verbose' in captured.out
     assert "artist" in captured.out
@@ -261,10 +256,10 @@ def test_inspect_help(capsys):
 def test_inspect_missing_path(capsys):
     """Test inspect command with non-existent path."""
     with pytest.raises(SystemExit) as exc_info:
-        with patch("sys.argv", ["rdbm", "inspect", "/nonexistent/path"]):
+        with patch("sys.argv", ["rdbm", "inspect", "--db-dir", "/nonexistent/path"]):
             main()
 
-    assert exc_info.value.code == 1
+    assert exc_info.value.code == 10  # ExitCode.INVALID_INPUT
 
 
 def test_inspect_invalid_file_number(capsys, tmp_path):
@@ -275,10 +270,13 @@ def test_inspect_invalid_file_number(capsys, tmp_path):
 
     # Test with invalid file number (too high)
     with pytest.raises(SystemExit) as exc_info:
-        with patch("sys.argv", ["rdbm", "inspect", str(db_dir), "9"]):
+        with patch(
+            "sys.argv",
+            ["rdbm", "inspect", "--db-dir", str(db_dir), "--file-number", "9"],
+        ):
             main()
 
-    assert exc_info.value.code == 1
+    assert exc_info.value.code == 10  # ExitCode.INVALID_INPUT
     captured = capsys.readouterr()
     assert (
         "must be between 0 and 8" in captured.out
@@ -293,10 +291,10 @@ def test_inspect_missing_database_file(capsys, tmp_path):
     db_dir.mkdir()
 
     with pytest.raises(SystemExit) as exc_info:
-        with patch("sys.argv", ["rdbm", "inspect", str(db_dir)]):
+        with patch("sys.argv", ["rdbm", "inspect", "--db-dir", str(db_dir)]):
             main()
 
-    assert exc_info.value.code == 1
+    assert exc_info.value.code == 10  # ExitCode.INVALID_INPUT
     captured = capsys.readouterr()
     output = captured.out + captured.err
     assert "not found" in output.lower() or "does not exist" in output.lower()
@@ -324,7 +322,7 @@ def test_inspect_with_mock_database(tmp_path):
         )
 
     # Test inspect without error
-    with patch("sys.argv", ["rdbm", "inspect", str(db_dir)]):
+    with patch("sys.argv", ["rdbm", "inspect", "--db-dir", str(db_dir)]):
         # Should not raise SystemExit for valid file
         try:
             main()
@@ -349,7 +347,10 @@ def test_inspect_quiet_mode(tmp_path):
         f.write(struct.pack("III", magic, datasize, entry_count))
 
     # Test with quiet mode
-    with patch("sys.argv", ["rdbm", "inspect", str(db_dir), "0", "--quiet"]):
+    with patch(
+        "sys.argv",
+        ["rdbm", "inspect", "--db-dir", str(db_dir), "--file-number", "0", "--quiet"],
+    ):
         try:
             main()
         except SystemExit as e:
@@ -399,7 +400,18 @@ def test_inspect_all_file_numbers(tmp_path):
 
     # Test each file number
     for i in range(9):
-        with patch("sys.argv", ["rdbm", "inspect", str(db_dir), str(i), "--quiet"]):
+        with patch(
+            "sys.argv",
+            [
+                "rdbm",
+                "inspect",
+                "--db-dir",
+                str(db_dir),
+                "--file-number",
+                str(i),
+                "--quiet",
+            ],
+        ):
             try:
                 main()
             except SystemExit as e:
@@ -407,194 +419,6 @@ def test_inspect_all_file_numbers(tmp_path):
                     pytest.fail(
                         f"inspect command for file {i} failed with exit code {e.code}"
                     )
-
-
-# def test_watch_help(capsys):
-#     """Test that watch command help works."""
-#     with pytest.raises(SystemExit) as exc_info:
-#         with patch('sys.argv', ['rdbm', 'watch', '--help']):
-#             main()
-
-#     assert exc_info.value.code == 0
-#     captured = capsys.readouterr()
-#     assert 'music_path' in captured.out
-#     assert '--output' in captured.out
-#     assert 'Monitor music directory' in captured.out
-#     assert '--config' in captured.out
-#     assert '--load-tags' in captured.out
-#     assert '--save-tags' in captured.out
-
-
-# def test_watch_missing_path(capsys):
-#     """Test watch command with non-existent path."""
-#     with pytest.raises(SystemExit) as exc_info:
-#         with patch('sys.argv', ['rdbm', 'watch', '/nonexistent/path']):
-#             main()
-
-#     assert exc_info.value.code == 1
-
-
-def test_music_directory_event_handler_creation(tmp_path):
-    """Test MusicDirectoryEventHandler initialization."""
-
-    console = Console()
-    args = Namespace()
-    handler = MusicDirectoryEventHandler(tmp_path, args, console)
-
-    assert handler.music_path == tmp_path
-    assert handler.args == args
-    assert handler.console == console
-    assert handler.pending_regeneration is False
-    assert handler.debounce_seconds == 2
-
-
-def test_music_directory_event_handler_should_process_file():
-    """Test file extension filtering."""
-
-    console = Console()
-    args = Namespace()
-    handler = MusicDirectoryEventHandler(Path("/tmp"), args, console)
-
-    # Should process music files
-    assert handler.should_process_file("/path/to/song.mp3")
-    assert handler.should_process_file("/path/to/song.flac")
-    assert handler.should_process_file("/path/to/song.ogg")
-    assert handler.should_process_file("/path/to/song.m4a")
-    assert handler.should_process_file("/path/to/song.MP3")  # Case insensitive
-
-    # Should not process non-music files
-    assert not handler.should_process_file("/path/to/file.txt")
-    assert not handler.should_process_file("/path/to/file.jpg")
-    assert not handler.should_process_file("/path/to/file.pdf")
-
-
-def test_music_directory_event_handler_on_any_event_created(tmp_path, capsys):
-    """Test event handler for file creation."""
-
-    console = Console()
-    args = Namespace()
-    handler = MusicDirectoryEventHandler(tmp_path, args, console)
-
-    # Create a mock event for a music file
-    event = Mock()
-    event.is_directory = False
-    event.event_type = "created"
-    event.src_path = str(tmp_path / "new_song.mp3")
-
-    handler.on_any_event(event)
-
-    assert handler.pending_regeneration is True
-    assert handler.last_event_time > 0
-
-
-def test_music_directory_event_handler_on_any_event_modified(tmp_path):
-    """Test event handler for file modification."""
-
-    console = Console()
-    args = Namespace()
-    handler = MusicDirectoryEventHandler(tmp_path, args, console)
-
-    # Create a mock event for a music file modification
-    event = Mock()
-    event.is_directory = False
-    event.event_type = "modified"
-    event.src_path = str(tmp_path / "song.mp3")
-
-    handler.on_any_event(event)
-
-    assert handler.pending_regeneration is True
-
-
-def test_music_directory_event_handler_on_any_event_deleted(tmp_path):
-    """Test event handler for file deletion."""
-
-    console = Console()
-    args = Namespace()
-    handler = MusicDirectoryEventHandler(tmp_path, args, console)
-
-    # Create a mock event for a music file deletion
-    event = Mock()
-    event.is_directory = False
-    event.event_type = "deleted"
-    event.src_path = str(tmp_path / "old_song.mp3")
-
-    handler.on_any_event(event)
-
-    assert handler.pending_regeneration is True
-
-
-def test_music_directory_event_handler_ignores_directories(tmp_path):
-    """Test that directory events are ignored."""
-
-    console = Console()
-    args = Namespace()
-    handler = MusicDirectoryEventHandler(tmp_path, args, console)
-
-    # Create a mock directory event
-    event = Mock()
-    event.is_directory = True
-    event.event_type = "created"
-    event.src_path = str(tmp_path / "new_folder")
-
-    handler.on_any_event(event)
-
-    # Should not mark for regeneration
-    assert handler.pending_regeneration is False
-
-
-def test_music_directory_event_handler_ignores_non_music_files(tmp_path):
-    """Test that non-music file events are ignored."""
-
-    console = Console()
-    args = Namespace()
-    handler = MusicDirectoryEventHandler(tmp_path, args, console)
-
-    # Create a mock event for a non-music file
-    event = Mock()
-    event.is_directory = False
-    event.event_type = "created"
-    event.src_path = str(tmp_path / "document.txt")
-
-    handler.on_any_event(event)
-
-    # Should not mark for regeneration
-    assert handler.pending_regeneration is False
-
-
-def test_music_directory_event_handler_should_regenerate_debounce(tmp_path):
-    """Test debouncing logic for regeneration."""
-
-    console = Console()
-    args = Namespace()
-    handler = MusicDirectoryEventHandler(tmp_path, args, console)
-
-    # Initially, should not regenerate
-    assert not handler.should_regenerate()
-
-    # Mark for regeneration
-    handler.pending_regeneration = True
-    handler.last_event_time = time.time()
-
-    # Immediately after, should not regenerate (debounce)
-    assert not handler.should_regenerate()
-
-    # After waiting past debounce period
-    handler.last_event_time = time.time() - 3  # 3 seconds ago
-    assert handler.should_regenerate()
-
-
-def test_music_directory_event_handler_should_regenerate_resets_flag(tmp_path):
-    """Test that should_regenerate respects the pending flag."""
-
-    console = Console()
-    args = Namespace()
-    handler = MusicDirectoryEventHandler(tmp_path, args, console)
-
-    # Without pending regeneration, should return False even after debounce
-    handler.pending_regeneration = False
-    handler.last_event_time = time.time() - 3
-
-    assert not handler.should_regenerate()
 
 
 # ============================================================================
@@ -709,7 +533,8 @@ def test_load_json_valid_database(tmp_path, capsys):
 
     with pytest.raises(SystemExit) as exc_info:
         with patch(
-            "sys.argv", ["rdbm", "load", str(db_dir), "--json", "--log-level", "debug"]
+            "sys.argv",
+            ["rdbm", "load", "--db-dir", str(db_dir), "--json", "--log-level", "debug"],
         ):
             main()
 
@@ -731,7 +556,9 @@ def test_load_json_valid_database(tmp_path, capsys):
 def test_load_json_nonexistent_path(capsys):
     """Test load command with --json flag on non-existent path."""
     with pytest.raises(SystemExit) as exc_info:
-        with patch("sys.argv", ["rdbm", "load", "/nonexistent/path", "--json"]):
+        with patch(
+            "sys.argv", ["rdbm", "load", "--db-dir", "/nonexistent/path", "--json"]
+        ):
             main()
 
     assert exc_info.value.code == 10  # INVALID_INPUT
@@ -758,7 +585,7 @@ def test_load_json_corrupted_database(tmp_path, capsys):
         f.write(b"CORRUPTED_DATA")
 
     with pytest.raises(SystemExit) as exc_info:
-        with patch("sys.argv", ["rdbm", "load", str(db_dir), "--json"]):
+        with patch("sys.argv", ["rdbm", "load", "--db-dir", str(db_dir), "--json"]):
             main()
 
     assert exc_info.value.code == 20  # DATA_ERROR
@@ -826,7 +653,9 @@ def test_write_json_valid_database(tmp_path, capsys):
             [
                 "rdbm",
                 "write",
+                "--db-dir",
                 str(db_dir),
+                "--output",
                 str(output_dir),
                 "--json",
                 "--log-level",
@@ -853,7 +682,16 @@ def test_write_json_nonexistent_source(capsys):
     """Test write command with --json flag on non-existent source."""
     with pytest.raises(SystemExit) as exc_info:
         with patch(
-            "sys.argv", ["rdbm", "write", "/nonexistent/path", "/tmp/output", "--json"]
+            "sys.argv",
+            [
+                "rdbm",
+                "write",
+                "--db-dir",
+                "/nonexistent/path",
+                "--output",
+                "/tmp/output",
+                "--json",
+            ],
         ):
             main()
 
@@ -883,7 +721,16 @@ def test_write_json_corrupted_database(tmp_path, capsys):
 
     with pytest.raises(SystemExit) as exc_info:
         with patch(
-            "sys.argv", ["rdbm", "write", str(db_dir), str(output_dir), "--json"]
+            "sys.argv",
+            [
+                "rdbm",
+                "write",
+                "--db-dir",
+                str(db_dir),
+                "--output",
+                str(output_dir),
+                "--json",
+            ],
         ):
             main()
 
@@ -1012,7 +859,8 @@ def test_json_output_structure_load_success(tmp_path, capsys):
 
     with pytest.raises(SystemExit):
         with patch(
-            "sys.argv", ["rdbm", "load", str(db_dir), "--json", "--log-level", "debug"]
+            "sys.argv",
+            ["rdbm", "load", "--db-dir", str(db_dir), "--json", "--log-level", "debug"],
         ):
             main()
 
@@ -1051,8 +899,19 @@ def test_json_output_parseable_all_error_cases(capsys):
     """Test that all error responses produce parseable JSON."""
     error_cases = [
         (["rdbm", "validate", "--db-dir", "/nonexistent", "--json"], 10),
-        (["rdbm", "load", "/nonexistent", "--json"], 10),
-        (["rdbm", "write", "/nonexistent", "/tmp/out", "--json"], 10),
+        (["rdbm", "load", "--db-dir", "/nonexistent", "--json"], 10),
+        (
+            [
+                "rdbm",
+                "write",
+                "--db-dir",
+                "/nonexistent",
+                "--output",
+                "/tmp/out",
+                "--json",
+            ],
+            10,
+        ),
         (
             [
                 "rdbm",

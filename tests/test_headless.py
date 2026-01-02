@@ -256,13 +256,13 @@ def test_validate_exit_codes(test_env):
     )
 
     # Validate existing database (should succeed with 0)
-    result_valid = run_rdbm(["validate", str(output_dir)])
+    result_valid = run_rdbm(["validate", "--db-dir", str(output_dir)])
     assert result_valid.returncode == 0, (
         f"Validating valid database should return 0, got {result_valid.returncode}"
     )
 
     # Validate non-existent database (should fail with 10)
-    result_missing = run_rdbm(["validate", "/nonexistent/db"])
+    result_missing = run_rdbm(["validate", "--db-dir", "/nonexistent/db"])
     assert result_missing.returncode == 10, (
         f"Validating missing database should return 10, got {result_missing.returncode}"
     )
