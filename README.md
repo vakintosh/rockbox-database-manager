@@ -63,30 +63,28 @@ A Python-based utility to accelerate Rockbox library management by generating da
 
 ## Installation
 
-### Using Docker (Recommended for Linux/Servers)
+### Using Docker (Recommended for Production/CI)
+
+Clean, production-ready containerization with full Kubernetes support.
 
 ```bash
-# Build the image (fast with uv)
+# Build the image
 docker build -t rockbox-db-manager .
 
+
 # Generate database
-docker run -v /path/to/music:/input -v /path/to/output:/output \
-  rockbox-db-manager rdbm generate --music-dir /input --output /output
+docker run --rm \
+  -v /path/to/music:/input:ro \
+  -v /path/to/output:/output \
+  rockbox-db-manager \
+  generate --music-dir /input --output /output/database_v1
 
-# Validate database
-docker run -v /path/to/output:/output \
-  rockbox-db-manager rdbm validate /output
-
-# Load database info
-docker run -v /path/to/output:/output \
-  rockbox-db-manager rdbm load /output
-
-# Inspect a database file
-docker run -v /path/to/output:/output \
-  rockbox-db-manager rdbm inspect /output/database_0.tcd
-
-# Interactive shell
-docker run -it -v /path/to/music:/input rockbox-db-manager bash
+# Generate with JSON output (for automation/CI)
+docker run --rm \
+  -v /path/to/music:/input:ro \
+  -v /path/to/output:/output \
+  rockbox-db-manager \
+  generate --music-dir /input --output /output/database_v1 --json
 ```
 
 ### Using UV (Recommended)
@@ -208,8 +206,9 @@ rdbm generate \
 - `--load-tags` - Load tag cache file for faster generation (optional)
 - `--save-tags` - Save tag cache file for future use (optional)
 - `--no-parallel` - Disable parallel processing (optional)
-- `--workers N` - Number of worker threads (optional, default: CPU count)
+- `--workers N` - Number of worker threads (optional, default: auto-calculated as CPU count + 4, max 32)
 - `-l, --log-level` - Logging level: debug, info, warning, error (default: critical)
+- `--json` - Output results in JSON format for automation/CI (suppresses progress indicators)
 
 **Exit Codes:**
 - `0` - Success
@@ -243,16 +242,39 @@ Writing database files...
 └────────┴────────────────────────────┘
 ```
 
+**JSON Output (with `--json` flag):**
+
+```json
+{
+  "status": "success",
+  "input_dir": "/path/to/music",
+  "output_dir": "/path/to/music/.rockbox",
+  "tracks": 1234,
+  "files_scanned": 1234,
+  "files_failed": 0,
+  "duration_ms": 5432,
+  "artist": 456,
+  "album": 234,
+  "genre": 12,
+  "title": 1234,
+  "composer": 89,
+  "comment": 0,
+  "grouping": 1234,
+  "path": 1234,
+  "album artist": 234
+}
+```
+
 #### 2. Load and Display Database
 
 View information about an existing database:
 
 ```bash
 # Basic load
-rdbm load /Volumes/IPOD/.rockbox
+rdbm load --db-dir /Volumes/IPOD/.rockbox
 
 # With detailed logging
-rdbm load /Volumes/IPOD/.rockbox --log-level debug
+rdbm load --db-dir /Volumes/IPOD/.rockbox --log-level debug
 ```
 
 **Example Output:**
@@ -284,7 +306,11 @@ Sample Entries (first 10):
 Check database integrity and structure:
 
 ```bash
-rdbm validate /Volumes/IPOD/.rockbox
+# Basic validation
+rdbm validate --db-dir /Volumes/IPOD/.rockbox
+
+# Quiet mode for automation
+rdbm validate --db-dir /Volumes/IPOD/.rockbox --quiet
 ```
 
 **Exit Codes:**
@@ -319,16 +345,13 @@ Parse and display raw database file contents:
 
 ```bash
 # Inspect index file
-rdbm inspect /Volumes/IPOD/.rockbox
+rdbm inspect --db-dir /Volumes/IPOD/.rockbox
 
 # Inspect specific tag file (0-8)
-rdbm inspect /Volumes/IPOD/.rockbox 3
+rdbm inspect --db-dir /Volumes/IPOD/.rockbox --file-number 3
 
 # Quiet mode (header only, no entries)
-rdbm inspect /Volumes/IPOD/.rockbox 0 --quiet
-
-# Verbose mode (complete raw output)
-rdbm inspect /Volumes/IPOD/.rockbox 3 --verbose
+rdbm inspect --db-dir /Volumes/IPOD/.rockbox --file-number 0 --quiet
 ```
 
 **Database File Numbers:**
@@ -374,7 +397,7 @@ First 10 entries:
 Copy database files to a new location:
 
 ```bash
-rdbm write /Volumes/IPOD/.rockbox /backup/.rockbox
+rdbm write --db-dir /Volumes/IPOD/.rockbox --output /backup/.rockbox
 ```
 
 #### 6. Get Help
