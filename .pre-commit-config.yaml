@@ -22,7 +22,7 @@ repos:
     hooks:
       - id: pytest
         name: Run pytest
-        entry: uv run pytest -xvs
+        entry: uv run pytest -x
         language: system
         types: [python]
         stages: [pre-push]

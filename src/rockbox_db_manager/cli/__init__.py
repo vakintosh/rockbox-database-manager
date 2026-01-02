@@ -5,7 +5,6 @@ This package provides the 'rdbm' command-line tool with various subcommands:
     load: Load and display existing database files
     validate: Validate database file integrity
     inspect: Inspect individual database files
-    watch: Watch directory for changes and auto-regenerate
 
 Modules:
     commands/: Command implementations (generate, load, validate, etc.)
@@ -27,7 +26,6 @@ from .commands import (
     cmd_validate,
     cmd_write,
     cmd_inspect,
-    cmd_watch,
 )
 from ..config import Config
 from ..database.cache import TagCache
@@ -42,7 +40,6 @@ __all__ = [
     "cmd_validate",
     "cmd_write",
     "cmd_inspect",
-    "cmd_watch",
     "setup_logging",
 ]
 
@@ -286,48 +283,6 @@ def main() -> None:
     #     help="Show complete raw output",
     # )
     inspect_parser.set_defaults(func=cmd_inspect)
-
-    # # ──────────────────────────────
-    # # watch
-    # # ──────────────────────────────
-    # watch_parser = subparsers.add_parser(
-    #     "watch",
-    #     help="Watch music directory for changes and auto-regenerate database",
-    #     usage="rdbm watch <music_path> [options]",
-    #     description=(
-    #         "Monitor music directory for file changes and "
-    #         "automatically regenerate the database"
-    #     ),
-    #     parents=[parent_parser],
-    #     formatter_class=RichHelpFormatter,
-    # )
-    # watch_parser.add_argument("music_path", help="Path to music folder to watch")
-    # watch_parser.add_argument(
-    #     "-o",
-    #     "--output",
-    #     help="Output directory for database files (default: music_path/.rockbox)",
-    # )
-    # watch_parser.add_argument("-c", "--config", help="Path to configuration file")
-    # watch_parser.add_argument(
-    #     "--load-tags",
-    #     help="Load tags from cache file (speeds up regeneration)",
-    # )
-    # watch_parser.add_argument(
-    #     "--save-tags",
-    #     help="Save tags to cache file for future use",
-    # )
-    # watch_parser.add_argument(
-    #     "--no-parallel",
-    #     action="store_true",
-    #     help="Disable parallel processing (useful for debugging or small datasets)",
-    # )
-    # watch_parser.add_argument(
-    #     "--workers",
-    #     type=int,
-    #     metavar="N",
-    #     help="Number of worker threads for parallel processing (default: CPU count, max 8)",
-    # )
-    # watch_parser.set_defaults(func=cmd_watch)
 
     # Parse args
     args = parser.parse_args()

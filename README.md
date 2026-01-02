@@ -38,7 +38,6 @@ Based on the original 2009 Python 2.x GUI implementation by **Mike Richards** an
 - **Python**: 3.11 or higher
 - **mutagen**: 1.47.0 or higher
 - **rich**: 13.0.0 or higher (for CLI formatting)
-- **watchdog**: 3.0.0 or higher (for file monitoring)
 
 ### Optional (GUI)
 - **wxPython**: 4.2.4 or higher (requires framework-enabled Python on macOS)
