@@ -27,7 +27,7 @@ Based on the original 2009 Python 2.x GUI implementation by **Mike Richards** an
 **Tested on:**
 - ✅ macOS Sonoma 14.8.3 (Intel Mac)
 - ✅ maOS Tahoe 26.1 (Apple Silicon)
-- 🔄 Ubuntu 24.04 LTS (Kernel 6.17.0, aarch64 / Raspberry Pi) (in progress)
+- ✅ Ubuntu 24.04 LTS (Kernel 6.17.0, aarch64 / Raspberry Pi) (in progress)
 - 🔄 Windows (in progress)
 
 ---
@@ -57,7 +57,6 @@ Clean, production-ready containerization with full Kubernetes support.
 ```bash
 # Build the image
 docker build -t rockbox-db-manager .
-
 
 # Generate database
 docker run --rm \
