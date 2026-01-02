@@ -72,6 +72,7 @@ class DatabaseOperations:
 
         def OnEnd(evt):
             evt.info.timer.Stop()
+            evt.info.gauge = evt.info.gauge_ctrl.GetRange()  # Set to maximum
             evt.info.status = "Done"
             # Force the InfoPanel to re-layout and repaint immediately
             evt.info.parent.Layout()
@@ -110,6 +111,7 @@ class DatabaseOperations:
 
         def OnEnd(evt):
             evt.info.timer.Stop()
+            evt.info.gauge = evt.info.gauge_ctrl.GetRange()  # Set to maximum
             evt.info.status = "Done"
             # Force the InfoPanel to re-layout and repaint immediately
             evt.info.parent.Layout()
@@ -158,6 +160,7 @@ class DatabaseOperations:
 
         def OnEnd(evt):
             evt.info.timer.Stop()
+            evt.info.gauge = evt.info.gauge_ctrl.GetRange()  # Set to maximum
             evt.info.status = "Done"
             # Force the InfoPanel to re-layout and repaint immediately
             evt.info.parent.Layout()
@@ -217,6 +220,7 @@ class DatabaseOperations:
 
         def OnEnd(evt):
             evt.info.timer.Stop()
+            evt.info.gauge = evt.info.gauge_ctrl.GetRange()  # Set to maximum
             evt.info.status = "Done"
             # Force the InfoPanel to re-layout and repaint immediately
             evt.info.parent.Layout()
@@ -291,6 +295,7 @@ class DatabaseOperations:
 
         def OnEnd(evt):
             evt.info.timer.Stop()
+            evt.info.gauge = evt.info.gauge_ctrl.GetRange()  # Set to maximum
             evt.info.status = "Done"
             # Force the InfoPanel to re-layout and repaint immediately
             evt.info.parent.Layout()
@@ -340,6 +345,7 @@ class DatabaseOperations:
 
         def OnEnd(evt):
             evt.info.timer.Stop()
+            evt.info.gauge = evt.info.gauge_ctrl.GetRange()  # Set to maximum
             evt.info.status = "Done"
             # Force the InfoPanel to re-layout and repaint immediately
             evt.info.parent.Layout()

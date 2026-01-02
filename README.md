@@ -4,32 +4,19 @@ A Python-based utility to accelerate Rockbox library management by generating da
 [![License](https://img.shields.io/badge/license-GPL%20v2-blue.svg)](LICENSE)
 
 ---
-## Credits & History
-
-### Original Project (2009)
-**Mike Richards** - Original Python 2.x Gui implementation with wxPython. See [Legacy Codebase](Legacy_Codebase)
-
----
 
 ## Features
 
-- **Generate Rockbox databases** from audio file metadata
-- **Support for multiple formats**: MP3, FLAC, MP4, Ogg Vorbis, WMA, and more
-- **Multiprocessing tag parsing** - bypasses Python GIL for true parallel execution (4-15x faster on multi-core systems)
-- **Persistent thread/process pools** - reused across operations for optimal performance
-- **Memory-based tag caching** with auto-detection based on available RAM
-- **Customizable titleformat strings** (foobar2000 syntax) for organizing music
-- **Tag caching** for faster database regeneration on large collections
-- **CLI commands**:
-  - `generate` - Create database from music folder
-  - `load` - Display existing database information
-  - `validate` - Check database integrity
-  - `inspect` - Low-level file inspection using modern implementation
-  - `write` - Copy database to new location
-- **Modern wxPython Phoenix GUI** with intuitive interface
-  - Async I/O support to prevent blocking
-  - Cancellable operations
-  - Real-time progress tracking
+- **Fast database generation** from audio metadata (MP3, FLAC, MP4, Ogg Vorbis, WMA, and more)
+- **True parallel processing** - multiprocessing bypasses Python GIL (4-15x faster on multi-core systems)
+- **Intelligent caching** - persistent tag cache and memory-based optimization
+- **Full CLI suite** - generate, validate, inspect, load, and copy databases
+- **wxPython GUI** - async operations with cancellable tasks and real-time progress
+- **Customizable titleformat** - foobar2000 syntax for flexible metadata organization
+- **Docker support** - production-ready containerization with Kubernetes examples
+- **CI/automation friendly** - JSON output, exit codes, and headless operation
+
+Based on the original 2009 Python 2.x GUI implementation by **Mike Richards** and the inspect database implementation by **Aren Olson** - See [Legacy Codebase](Legacy_Codebase)
 
 ---
 
