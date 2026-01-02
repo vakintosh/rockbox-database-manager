@@ -135,371 +135,85 @@ rockbox-db-manager-gui
 
 ## Quick Start
 
-### Generate a Database
-
 ```bash
-# Basic generation (requires both --music-dir and --output)
+# Generate a database
 rdbm generate --music-dir /path/to/music --output /path/to/.rockbox
 
-# With custom output location
-rdbm generate --music-dir /path/to/music --output /Volumes/IPOD/.rockbox
+# Validate database integrity
+rdbm validate --db-dir /path/to/.rockbox
 
-# Using configuration file
-rdbm generate --music-dir /path/to/music --output /output --config ~/.rdbm/.rdbm_config.toml
+# Inspect database files
+rdbm inspect --db-dir /path/to/.rockbox
 
-# With tag caching for faster regeneration
-rdbm generate --music-dir /path/to/music --output /output --save-tags ~/.rockbox_tags.cache
-
-# Quick regeneration using cached tags
-rdbm generate --music-dir /path/to/music --output /output --load-tags ~/.rockbox_tags.cache.gz
-```
-
-### Inspect a Database
-
-```bash
-# Inspect index file
-rdbm inspect /Volumes/IPOD/.rockbox
-
-# Inspect artist database (file 0)
-rdbm inspect /Volumes/IPOD/.rockbox 0
-
-# Quiet mode (header only)
-rdbm inspect /Volumes/IPOD/.rockbox 1 --quiet
-```
-
-### Validate Database Integrity
-
-```bash
-rdbm validate /Volumes/IPOD/.rockbox
+# Get detailed help for any command
+rdbm --help
+rdbm generate --help
 ```
 
 ---
 
 ## Usage
 
-### Command-Line Interface (CLI)
+### Command-Line Interface
 
-The `rdbm` command provides comprehensive database management:
+The `rdbm` command provides several subcommands for database management:
 
-#### 1. Generate Database
+- **`generate`** - Create Rockbox database from music folder
+- **`load`** - Display existing database information
+- **`validate`** - Check database integrity
+- **`inspect`** - Low-level file inspection
+- **`write`** - Copy database to new location
 
-Create Rockbox database files from a music folder:
-
+For detailed options and usage:
 ```bash
-# Basic usage (both flags required)
-rdbm generate --music-dir /path/to/music --output /path/to/.rockbox
-
-# All options
-rdbm generate \
-  --music-dir /path/to/music \
-  --output /Volumes/IPOD/.rockbox \
-  --config ~/.rdbm/.rdbm_config.toml \
-  --load-tags ~/.rockbox_tags.cache \
-  --save-tags ~/.rockbox_tags.cache \
-  --log-level debug
+rdbm --help              # List all commands
+rdbm generate --help     # Help for specific command
 ```
 
-**Options:**
-- `--music-dir` - Path to music folder (required)
-- `-o, --output` - Output directory for database files (required)
-- `-c, --config` - Configuration file path (optional)
-- `--load-tags` - Load tag cache file for faster generation (optional)
-- `--save-tags` - Save tag cache file for future use (optional)
-- `--no-parallel` - Disable parallel processing (optional)
-- `--workers N` - Number of worker threads (optional, default: auto-calculated as CPU count + 4, max 32)
-- `-l, --log-level` - Logging level: debug, info, warning, error (default: critical)
-- `--json` - Output results in JSON format for automation/CI (suppresses progress indicators)
-
-**Exit Codes:**
-- `0` - Success
-- `10` - Invalid input (missing/invalid directories)
-- `11` - Invalid configuration file
-- `20` - Data errors (corrupt files, missing tags)
-- `30` - Database generation failed
-- `32` - Database write failed
-- `41` - Operation cancelled (Ctrl+C)
-
-**Example Output:**
-
-```
-Scanning music folder...
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100% 1234/1234 files
-✓ Generated 1234 database entries
-
-Writing database files...
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 10/10 files
-✓ Database generation complete
-
-      Database Summary
-┏━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ Field  ┃ Value                      ┃
-┡━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
-│ Input  │ /path/to/music             │
-│ Output │ /path/to/music/.rockbox    │
-│ Files  │ 1234                       │
-│ Entries│ 1234                       │
-│ Failed │ 0                          │
-└────────┴────────────────────────────┘
-```
-
-**JSON Output (with `--json` flag):**
-
-```json
-{
-  "status": "success",
-  "input_dir": "/path/to/music",
-  "output_dir": "/path/to/music/.rockbox",
-  "tracks": 1234,
-  "files_scanned": 1234,
-  "files_failed": 0,
-  "duration_ms": 5432,
-  "artist": 456,
-  "album": 234,
-  "genre": 12,
-  "title": 1234,
-  "composer": 89,
-  "comment": 0,
-  "grouping": 1234,
-  "path": 1234,
-  "album artist": 234
-}
-```
-
-#### 2. Load and Display Database
-
-View information about an existing database:
-
-```bash
-# Basic load
-rdbm load --db-dir /Volumes/IPOD/.rockbox
-
-# With detailed logging
-rdbm load --db-dir /Volumes/IPOD/.rockbox --log-level debug
-```
-
-**Example Output:**
-
-```
-Database Information:
-  Location: /Volumes/IPOD/.rockbox
-  Entries:  1234
-
-Tag Files:
-  artist      :    456 entries
-  album       :    234 entries
-  genre       :     12 entries
-  title       :   1234 entries
-  filename    :   1234 entries
-  composer    :     89 entries
-  comment     :      0 entries
-  albumartist :    234 entries
-  grouping    :   1234 entries
-
-Sample Entries (first 10):
-  1. /Music/Artist/Album/01 Track.mp3
-  2. /Music/Artist/Album/02 Track.mp3
-  ...
-```
-
-#### 3. Validate Database
-
-Check database integrity and structure:
-
-```bash
-# Basic validation
-rdbm validate --db-dir /Volumes/IPOD/.rockbox
-
-# Quiet mode for automation
-rdbm validate --db-dir /Volumes/IPOD/.rockbox --quiet
-```
-
-**Exit Codes:**
-- `0` - Validation passed
-- `10` - Invalid input (directory doesn't exist)
-- `31` - Validation failed (database issues found)
-
-**Example Output:**
-
-```
-Validating database: /Volumes/IPOD/.rockbox
-
-✓ All database files present
-✓ Database loaded successfully
-✓ All references valid
-✓ Index entry count matches
-
-Validation Summary
-┏━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ Status  ┃ Result                    ┃
-┡━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
-│ Files   │ ✓ All present (10/10)     │
-│ Loading │ ✓ Success                 │
-│ Entries │ ✓ 1234 entries validated  │
-│ Issues  │ None                      │
-└─────────┴───────────────────────────┘
-```
-
-#### 4. Inspect Database Files (Low-Level)
-
-Parse and display raw database file contents:
-
-```bash
-# Inspect index file
-rdbm inspect --db-dir /Volumes/IPOD/.rockbox
-
-# Inspect specific tag file (0-8)
-rdbm inspect --db-dir /Volumes/IPOD/.rockbox --file-number 3
-
-# Quiet mode (header only, no entries)
-rdbm inspect --db-dir /Volumes/IPOD/.rockbox --file-number 0 --quiet
-```
-
-**Database File Numbers:**
-- `0` - artist
-- `1` - album
-- `2` - genre
-- `3` - title
-- `4` - filename
-- `5` - composer
-- `6` - comment
-- `7` - albumartist
-- `8` - grouping
-- *(no number)* - index file
-
-**Example Output:**
-
-```
-Reading database file: /Volumes/IPOD/.rockbox/database_0.tcd
-File type: artist
-File size: 12,345 bytes
-
-   Tag File Header (artist)
-┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━┓
-┃ Field       ┃ Value               ┃
-┡━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━┩
-│ Magic       │ 0x52444244          │
-│ Data Size   │ 12,345 bytes        │
-│ Entry Count │ 456                 │
-└─────────────┴─────────────────────┘
-
-First 10 entries:
-┏━━━━━━┳━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
-┃ Index┃ ID   ┃ Length ┃ Data             ┃
-┡━━━━━━╇━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
-│ 0    │ 0    │ 12     │ The Beatles      │
-│ 1    │ 1    │ 15     │ Led Zeppelin     │
-│ 2    │ 2    │ 9      │ Pink Floyd       │
-...
-```
-
-#### 5. Copy Database
-
-Copy database files to a new location:
-
-```bash
-rdbm write --db-dir /Volumes/IPOD/.rockbox --output /backup/.rockbox
-```
-
-#### 6. Get Help
-
-```bash
-# General help
-rdbm --help
-
-# Command-specific help
-rdbm generate --help
-rdbm inspect --help
-rdbm validate --help
-
-# Version information
-rdbm --version
-```
+**Key Features:**
+- Tag caching for faster regeneration (`--save-tags` / `--load-tags`)
+- Configuration file support (`--config`)
+- JSON output for automation (`--json`)
+- Parallel processing (auto-configured, or use `--workers N`)
+- Detailed logging levels (`--log-level debug`)
 
 ### GUI Application
 
-Launch the graphical interface:
-
 ```bash
-# Using UV
-uv run rockbox-db-manager
-
-# Or if installed
+# Launch GUI
 rockbox-db-manager
+
+# Or with UV
+uv run rockbox-db-manager
 ```
 
-**GUI Features:**
-- Visual music folder selection
-- Progress tracking with progress bars
-- Database inspection and validation
-- Configuration editing
-- Cross-platform file dialogs
+Features include visual folder selection, progress tracking, and database inspection.
 
 ---
 
 ## Configuration
 
-### Configuration File
-
-The application uses TOML configuration files for customization. A comprehensive example is provided: .rdbm_config_example.toml
+Configuration files use TOML format. See [.rdbm_config_example.toml](.rdbm_config_example.toml) for all available options.
 
 **Default locations:**
 - Linux/macOS: `~/.rdbm/.rdbm_config.toml`
 - Windows: `%USERPROFILE%\.rdbm\.rdbm_config.toml`
 
-**Custom location:**
-```bash
-rdbm generate /path/to/music -c /path/to/custom_config.toml
-```
-
-### Quick Setup
-
-```bash
-# Copy example configuration
-cp .rdbm_config_example.toml ~/.rdbm/.rdbm_config.toml
-
-# Edit for your needs
-vim ~/.rdbm/.rdbm_config.toml
-
-# Use with generate
-rdbm generate /path/to/music -c ~/.rdbm/.rdbm_config.toml
-```
-
-### Configuration Options
-
-See [.rdbm_config_example.toml](.rdbm_config_example.toml)
-
-For complete titleformat documentation, see: [Foobar2000 Titleformat Reference](http://wiki.hydrogenaudio.org/index.php?title=Foobar2000:Titleformat_Reference)
+Use custom config with `--config` flag. For titleformat syntax, see: [Foobar2000 Titleformat Reference](http://wiki.hydrogenaudio.org/index.php?title=Foobar2000:Titleformat_Reference)
 
 ---
 
-## Testing
-
-### Running Tests
+## Development
 
 ```bash
-# Run all tests
+# Run tests
 uv run pytest -v
 
-# Run with coverage report
+# With coverage
 uv run pytest --cov=src/rockbox_db_manager --cov-report=html -v
 
-# Run specific test file
-uv run pytest tests/test_cli.py -v
-
-# Run specific test
-uv run pytest tests/test_tagfile.py::TestTagFile::test_tagfile_creation -v
-
-# View HTML coverage report
-open htmlcov/index.html
-```
-
-### Code Quality
-
-```bash
-# Run linter
+# Linting and formatting
 uv run ruff check src/ tests/
-
-# Format code
 uv run ruff format src/ tests/
 ```
 
@@ -581,83 +295,17 @@ rdbm generate --help
 
 ## Contributing
 
-Contributions are welcome! Please ensure:
+Contributions welcome! Please ensure:
 
-1. **Install pre-commit hooks** (recommended):
+1. All tests pass (`uv run pytest`)
+2. Code passes linting (`uv run ruff check`)
+3. Pre-commit hooks installed (recommended):
    ```bash
    uv run pre-commit install
    uv run pre-commit install --hook-type pre-push
    ```
 
-2. **All tests pass:**
-   ```bash
-   uv run pytest
-   ```
-
-3. **Code passes linting:**
-   ```bash
-   uv run ruff check src/ tests/
-   ```
-
-
-5. **New features include tests**
-
-6. **Code follows existing style conventions**
-
-With pre-commit hooks installed, most of these checks run automatically on commit/push.
-
-### Development Setup
-
-```bash
-# Clone repository
-git clone https://github.com/vakintosh/rockbox-db-manager.git
-cd rockbox-db-manager
-
-# Install with dev dependencies
-uv sync --group dev
-
-# Install pre-commit hooks (recommended)
-uv run pre-commit install
-uv run pre-commit install --hook-type pre-push
-
-# Run tests
-uv run pytest -v
-
-# Run linter
-uv run ruff check src/ tests/
-
-```
-
-### Pre-commit Hooks
-
-This project uses [pre-commit](https://pre-commit.com/) to ensure code quality. The hooks run automatically on `git commit` and `git push`.
-
-**Configured hooks:**
-- **ruff** - Lints and formats code automatically
-- **trailing-whitespace** - Removes trailing whitespace
-- **end-of-file-fixer** - Ensures files end with a newline
-- **check-yaml** - Validates YAML syntax
-- **check-added-large-files** - Prevents committing large files
-- **pytest** - Runs tests before push (pre-push hook)
-
-**Setup:**
-```bash
-# Install hooks (one-time setup)
-uv run pre-commit install
-uv run pre-commit install --hook-type pre-push
-
-# Run hooks manually on all files
-uv run pre-commit run --all-files
-
-# Skip hooks for a specific commit (not recommended)
-git commit --no-verify -m "message"
-```
-
-**Benefits:**
-- Automatic code formatting and linting before commit
-- Catches issues early in development
-- Ensures consistent code style across contributors
-- Prevents pushing broken code (pytest on pre-push)
+Pre-commit hooks automatically check code quality on commit/push.
 
 ---
 
@@ -685,7 +333,7 @@ See LICENSE for full license text.
 - Some titleformat functions not yet fully implemented
 - Watch command disabled pending further testing
 
-See [GitHub Issues](https://github.com/yourusername/rockbox-db-manager/issues) for complete list and updates.
+See [GitHub Issues](https://github.com/vakintosh/rockbox-db-manager/issues) for complete list and updates.
 
 ---
 
