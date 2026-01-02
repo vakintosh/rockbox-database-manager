@@ -30,6 +30,12 @@ def cmd_validate(args: argparse.Namespace) -> None:
     db_path = Path(args.db_dir).resolve()
     quiet = getattr(args, "quiet", False)
     use_json = getattr(args, "json", False)
+
+    # In JSON mode, suppress INFO/DEBUG logs to keep output clean for parsing
+    # Only ERROR and above will be shown
+    if use_json and logging.getLogger().level < logging.WARNING:
+        logging.getLogger().setLevel(logging.WARNING)
+
     console = Console(quiet=quiet or use_json)
 
     if not db_path.exists():

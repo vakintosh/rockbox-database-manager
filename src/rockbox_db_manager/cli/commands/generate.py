@@ -42,6 +42,12 @@ def cmd_generate(args: argparse.Namespace) -> None:
     """
     start_time = time.time()
     use_json = getattr(args, "json", False)
+
+    # In JSON mode, suppress INFO/DEBUG logs to keep output clean for parsing
+    # Only ERROR and above will be shown
+    if use_json and logging.getLogger().level < logging.WARNING:
+        logging.getLogger().setLevel(logging.WARNING)
+
     music_path = Path(args.music_dir).resolve()
 
     if not music_path.exists():
@@ -146,9 +152,7 @@ def cmd_generate(args: argparse.Namespace) -> None:
         TagCache.clear()
         logging.debug("Cleared stale tag cache")
 
-    # Set up callback and progress bar
-    console = Console()
-
+    # Set up callback and progress bar (console already created with quiet=use_json)
     # Always show progress bar with message and timer
     try:
         with Progress(
@@ -170,6 +174,14 @@ def cmd_generate(args: argparse.Namespace) -> None:
 
             progress.update(scan_task, total=callback.count, completed=callback.count)
     except Exception as e:
+        if use_json:
+            json_output(
+                ErrorResponse(
+                    error="data_error",
+                    message=f"Failed to scan music directory: {e}",
+                ),
+                ExitCode.DATA_ERROR,
+            )
         logging.error("Failed to scan music directory: %s", e)
         sys.exit(ExitCode.DATA_ERROR)
 
@@ -177,6 +189,14 @@ def cmd_generate(args: argparse.Namespace) -> None:
     failed_files = len(db.failed)
 
     if total_files == 0:
+        if use_json:
+            json_output(
+                ErrorResponse(
+                    error="data_error",
+                    message=f"No music files found in: {music_path}",
+                ),
+                ExitCode.DATA_ERROR,
+            )
         logging.error("No music files found in: %s", music_path)
         sys.exit(ExitCode.DATA_ERROR)
 
@@ -235,6 +255,14 @@ def cmd_generate(args: argparse.Namespace) -> None:
             parallel_flag = not (hasattr(args, "no_parallel") and args.no_parallel)
             db.generate_database(callback=gen_callback, parallel=parallel_flag)
     except Exception as e:
+        if use_json:
+            json_output(
+                ErrorResponse(
+                    error="generation_failed",
+                    message=f"Database generation failed: {e}",
+                ),
+                ExitCode.GENERATION_FAILED,
+            )
         logging.error("Database generation failed: %s", e)
         sys.exit(ExitCode.GENERATION_FAILED)
 
@@ -250,6 +278,14 @@ def cmd_generate(args: argparse.Namespace) -> None:
     try:
         output_path.mkdir(parents=True, exist_ok=True)
     except Exception as e:
+        if use_json:
+            json_output(
+                ErrorResponse(
+                    error="invalid_input",
+                    message=f"Cannot create output directory {output_path}: {e}",
+                ),
+                ExitCode.INVALID_INPUT,
+            )
         logging.error("Cannot create output directory %s: %s", output_path, e)
         sys.exit(ExitCode.INVALID_INPUT)
 
@@ -271,6 +307,14 @@ def cmd_generate(args: argparse.Namespace) -> None:
 
             db.write(str(output_path), callback=write_callback)
     except Exception as e:
+        if use_json:
+            json_output(
+                ErrorResponse(
+                    error="write_failed",
+                    message=f"Failed to write database: {e}",
+                ),
+                ExitCode.WRITE_FAILED,
+            )
         logging.error("Failed to write database: %s", e)
         sys.exit(ExitCode.WRITE_FAILED)
 

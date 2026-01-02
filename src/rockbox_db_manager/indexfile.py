@@ -1,6 +1,6 @@
 import struct
 
-from .utils import fat_to_mtime
+from .utils import fat_to_mtime, mtime_to_fat
 from .constants import MAGIC, TAGS, FILE_TAGS, EMBEDDED_TAGS, SUPPORTED_VERSIONS
 from .tagging.tag.tagfile import TagEntry
 import logging
@@ -143,7 +143,11 @@ class IndexEntry(dict):
             f.write(struct.pack("I", tagentry.offset))
 
         for field in EMBEDDED_TAGS:
-            f.write(struct.pack("I", self[field]))
+            value = self[field]
+            # mtime needs to be converted from float back to FAT format integer
+            if field == "mtime":
+                value = mtime_to_fat(value)
+            f.write(struct.pack("I", value))
 
     @staticmethod
     def from_file(f, tagfiles):

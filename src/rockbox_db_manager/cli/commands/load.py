@@ -23,8 +23,13 @@ def cmd_load(args: argparse.Namespace) -> None:
         10: Invalid input (directory doesn't exist)
         20: Data error (failed to load database)
     """
-    db_path = Path(args.database_path).resolve()
+    db_path = Path(args.db_dir).resolve()
     use_json = getattr(args, "json", False)
+
+    # In JSON mode, suppress INFO/DEBUG logs to keep output clean for parsing
+    # Only ERROR and above will be shown
+    if use_json and logging.getLogger().level < logging.WARNING:
+        logging.getLogger().setLevel(logging.WARNING)
 
     if not db_path.exists():
         if use_json:
@@ -54,12 +59,13 @@ def cmd_load(args: argparse.Namespace) -> None:
 
     # Load database
     try:
-        db = Database.read(
-            str(db_path),
-            callback=log_callback
+        # Use log_callback if logging is enabled, otherwise use no-op
+        callback = (
+            log_callback
             if logging.getLogger().level <= logging.INFO
-            else None,  # type: ignore[arg-type]
+            else lambda msg, **kwargs: None
         )
+        db = Database.read(str(db_path), callback=callback)
     except Exception as e:
         if use_json:
             json_output(

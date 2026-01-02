@@ -6,6 +6,7 @@ import sys
 import traceback
 
 from pathlib import Path
+from typing import Optional
 
 from rich.console import Console
 from rich.table import Table
@@ -13,6 +14,27 @@ from rich.table import Table
 from ...constants import FILE_TAGS
 from ...indexfile import IndexFile
 from ...tagging.tag.tagfile import TagFile
+from ..utils import ExitCode, json_output
+from ..schemas import ErrorResponse
+from pydantic import BaseModel, Field
+
+
+class InspectSuccessResponse(BaseModel):
+    """Response for successful inspect operation."""
+
+    status: str = "success"
+    file_path: str = Field(description="Path to inspected file")
+    file_type: str = Field(description="Type of database file")
+    file_size: int = Field(ge=0, description="File size in bytes")
+    magic: str = Field(description="Magic number in hex")
+    data_size: int = Field(ge=0, description="Data size in bytes")
+    entry_count: int = Field(ge=0, description="Number of entries")
+    # Index-specific fields
+    serial: Optional[int] = Field(
+        default=None, description="Serial number (index only)"
+    )
+    commitid: Optional[int] = Field(default=None, description="Commit ID (index only)")
+    dirty: Optional[bool] = Field(default=None, description="Dirty flag (index only)")
 
 
 def cmd_inspect(args: argparse.Namespace) -> None:
@@ -20,14 +42,32 @@ def cmd_inspect(args: argparse.Namespace) -> None:
 
     Args:
         args: Parsed command-line arguments
+
+    Exit Codes:
+        0: Success
+        1: Invalid input or parsing error
     """
-    console = Console()
+    use_json = getattr(args, "json", False)
+
+    # In JSON mode, suppress INFO/DEBUG logs to keep output clean for parsing
+    if use_json and logging.getLogger().level < logging.WARNING:
+        logging.getLogger().setLevel(logging.WARNING)
+
+    console = Console(quiet=use_json)
 
     # Determine which file to read
     if args.file_number is not None:
         if args.file_number < 0 or args.file_number > 8:
+            if use_json:
+                json_output(
+                    ErrorResponse(
+                        error="invalid_input",
+                        message="File number must be between 0 and 8",
+                    ),
+                    ExitCode.INVALID_INPUT,
+                )
             console.print("[red]Error: File number must be between 0 and 8[/red]")
-            sys.exit(1)
+            sys.exit(ExitCode.INVALID_INPUT)
 
         filename = f"database_{args.file_number}.tcd"
         file_type = FILE_TAGS[args.file_number]
@@ -35,11 +75,19 @@ def cmd_inspect(args: argparse.Namespace) -> None:
         filename = "database_idx.tcd"
         file_type = "index"
 
-    file_path = Path(args.database_path) / filename
+    file_path = Path(args.db_dir) / filename
 
     if not file_path.exists():
+        if use_json:
+            json_output(
+                ErrorResponse(
+                    error="invalid_input",
+                    message=f"File not found: {file_path}",
+                ),
+                ExitCode.INVALID_INPUT,
+            )
         console.print(f"[red]Error: File not found: {file_path}[/red]")
-        sys.exit(1)
+        sys.exit(ExitCode.INVALID_INPUT)
 
     console.print(f"[cyan]Reading database file: {file_path}[/cyan]")
     console.print(f"[cyan]File type: {file_type}[/cyan]")
@@ -50,7 +98,7 @@ def cmd_inspect(args: argparse.Namespace) -> None:
         if file_type == "index":
             # Need to load tag files first to properly read the index
             tagfiles = {}
-            db_dir = Path(args.database_path)
+            db_dir = Path(args.db_dir)
 
             # Load all tag files for proper index entry parsing
             for i, tag_name in enumerate(FILE_TAGS):
@@ -78,6 +126,23 @@ def cmd_inspect(args: argparse.Namespace) -> None:
 
             console.print(table)
             console.print()
+
+            # JSON output for index file
+            if use_json:
+                json_output(
+                    InspectSuccessResponse(
+                        file_path=str(file_path),
+                        file_type=file_type,
+                        file_size=file_path.stat().st_size,
+                        magic=f"0x{result.magic:08x}",
+                        data_size=result.size,
+                        entry_count=result.count,
+                        serial=result.serial,
+                        commitid=result.commitid,
+                        dirty=result.dirty,
+                    ),
+                    ExitCode.SUCCESS,
+                )
 
             # Show sample entries if not in quiet mode
             if not args.quiet:
@@ -147,6 +212,20 @@ def cmd_inspect(args: argparse.Namespace) -> None:
             console.print(table)
             console.print()
 
+            # JSON output for tag file
+            if use_json:
+                json_output(
+                    InspectSuccessResponse(
+                        file_path=str(file_path),
+                        file_type=file_type,
+                        file_size=file_path.stat().st_size,
+                        magic=f"0x{result.magic:08x}",
+                        data_size=result.size,
+                        entry_count=result.count,
+                    ),
+                    ExitCode.SUCCESS,
+                )
+
             # Show sample entries if not in quiet mode
             if not args.quiet:
                 if result.count > 0:
@@ -186,7 +265,15 @@ def cmd_inspect(args: argparse.Namespace) -> None:
         #     console.print(str(result))
 
     except Exception as e:
+        if use_json:
+            json_output(
+                ErrorResponse(
+                    error="parsing_error",
+                    message=f"Error parsing file: {e}",
+                ),
+                ExitCode.DATA_ERROR,
+            )
         console.print(f"[red]Error parsing file: {e}[/red]")
         if logging.getLogger().level <= logging.DEBUG:
             console.print(traceback.format_exc())
-        sys.exit(1)
+        sys.exit(ExitCode.DATA_ERROR)

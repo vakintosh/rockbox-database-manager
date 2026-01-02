@@ -8,9 +8,15 @@ def mtime_to_fat(mtime: float) -> int:
         mtime: Modification time from os.stat()
 
     Returns:
-        FAT format timestamp as integer
+        FAT format timestamp as integer (0 if date is before 1980)
     """
     year, month, day, hour, minute, second = time.localtime(mtime)[:-3]
+
+    # FAT timestamps can only represent dates from 1980-2107
+    # Return 0 for dates before 1980 (invalid FAT timestamps)
+    if year < 1980:
+        return 0
+
     year = year - 1980
     date = 0
     date |= year << 9

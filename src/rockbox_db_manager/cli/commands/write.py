@@ -23,9 +23,14 @@ def cmd_write(args: argparse.Namespace) -> None:
         20: Data error (failed to load database)
         32: Database write failed
     """
-    db_path = Path(args.database_path).resolve()
-    output_path = Path(args.output_path).resolve()
+    db_path = Path(args.db_dir).resolve()
+    output_path = Path(args.output).resolve()
     use_json = getattr(args, "json", False)
+
+    # In JSON mode, suppress INFO/DEBUG logs to keep output clean for parsing
+    # Only ERROR and above will be shown
+    if use_json and logging.getLogger().level < logging.WARNING:
+        logging.getLogger().setLevel(logging.WARNING)
 
     if not db_path.exists():
         if use_json:
@@ -54,12 +59,13 @@ def cmd_write(args: argparse.Namespace) -> None:
     logging.info("Loading database from: %s", db_path)
 
     try:
-        db = Database.read(
-            str(db_path),
-            callback=log_callback
+        # Use log_callback if logging is enabled, otherwise use no-op
+        callback = (
+            log_callback
             if logging.getLogger().level <= logging.INFO
-            else None,  # type: ignore[arg-type]
+            else lambda msg, **kwargs: None
         )
+        db = Database.read(str(db_path), callback=callback)
     except Exception as e:
         if use_json:
             json_output(
@@ -88,12 +94,13 @@ def cmd_write(args: argparse.Namespace) -> None:
     logging.info("Writing database to: %s", output_path)
 
     try:
-        db.write(
-            str(output_path),
-            callback=log_callback
+        # Use log_callback if logging is enabled, otherwise use no-op
+        write_callback = (
+            log_callback
             if logging.getLogger().level <= logging.INFO
-            else None,
+            else lambda msg, **kwargs: None
         )
+        db.write(str(output_path), callback=write_callback)
     except Exception as e:
         if use_json:
             json_output(

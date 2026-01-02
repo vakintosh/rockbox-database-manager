@@ -53,44 +53,55 @@ class RichRawHelpFormatter(RichHelpFormatter, argparse.RawDescriptionHelpFormatt
     pass
 
 
-def main() -> None:
-    """Main CLI entry point."""
-
-    # Parent parser for shared options
-    parent_parser = argparse.ArgumentParser(add_help=False)
-
-    parent_parser.add_argument(
+def add_global_options(parser_group):
+    """Add global options to an argument group."""
+    parser_group.add_argument(
+        "-h",
+        "--help",
+        action="help",
+        help="Show this help message and exit",
+    )
+    parser_group.add_argument(
         "-v",
         "--version",
         action="version",
         version=f"%(prog)s {__version__}",
     )
-    parent_parser.add_argument(
+    parser_group.add_argument(
         "-l",
         "--log-level",
         # choices=["debug", "info", "warning", "error"],
         default=None,
         help="Set logging level (disabled by default)",
     )
-    parent_parser.add_argument(
+    parser_group.add_argument(
         "--cache-size",
         type=int,
         metavar="SIZE",
         help="Override tag cache size (default: from config, typically 50000)",
     )
-    parent_parser.add_argument(
+    parser_group.add_argument(
         "--json",
         action="store_true",
         help="Output results in JSON format for machine parsing (suppresses progress indicators)",
     )
 
+
+def main() -> None:
+    """Main CLI entry point."""
+
+    # Main parser
     parser = argparse.ArgumentParser(
         prog="rdbm",
         usage="rdbm <command> [options]",
         description="Rockbox Database Manager - Generate and manage Rockbox database files",
-        formatter_class=RichRawHelpFormatter,  # Use the hybrid class here
-        parents=[parent_parser],
+        formatter_class=RichRawHelpFormatter,
+        add_help=False,
     )
+
+    # Add global options to main parser
+    main_global_group = parser.add_argument_group("Global Options")
+    add_global_options(main_global_group)
 
     # Subcommands
     subparsers = parser.add_subparsers(
@@ -98,14 +109,6 @@ def main() -> None:
         dest="command",
         metavar="",
     )
-
-    # # Global options
-    # parser.add_argument(
-    #     "-v",
-    #     "--version",
-    #     action="version",
-    #     version=f"%(prog)s {__version__}",
-    # )
 
     # ──────────────────────────────
     # generate
@@ -115,41 +118,45 @@ def main() -> None:
         help="Generate Rockbox database from music folder",
         usage="rdbm generate --music-dir <path/to/source/music/dir> --output <path/to/target/database/dir> [options]",
         description="Scan music folder and generate Rockbox database files",
-        parents=[parent_parser],
         formatter_class=RichHelpFormatter,
+        add_help=False,
     )
-    generate_parser.add_argument(
+    generate_required = generate_parser.add_argument_group("Required")
+    generate_required.add_argument(
         "--music-dir", type=Path, required=True, help="Path to music directory to scan"
     )
-    generate_parser.add_argument(
+    generate_required.add_argument(
         "-o",
         "--output",
         type=Path,
         required=True,
         help="Target directory for database files",
     )
-    generate_parser.add_argument("-c", "--config", help="Path to configuration file")
-    generate_parser.add_argument(
+    generate_options = generate_parser.add_argument_group("Options")
+    generate_options.add_argument("-c", "--config", help="Path to configuration file")
+    generate_options.add_argument(
         "--load-tags",
         type=Path,
         help="Load tags from cache file (speeds up regeneration)",
     )
-    generate_parser.add_argument(
+    generate_options.add_argument(
         "--save-tags",
         type=Path,
         help="Save tags to cache file for future use",
     )
-    generate_parser.add_argument(
+    generate_options.add_argument(
         "--no-parallel",
         action="store_true",
         help="Disable parallel processing (useful for debugging or small datasets)",
     )
-    generate_parser.add_argument(
+    generate_options.add_argument(
         "--workers",
         type=int,
         metavar="N",
-        help="Number of worker threads for parallel processing (default: CPU count, max 8)",
+        help="Number of worker threads for parallel processing (default: auto-calculated as CPU count + 4, max 32)",
     )
+    generate_global = generate_parser.add_argument_group("Global Options")
+    add_global_options(generate_global)
     generate_parser.set_defaults(func=cmd_generate)
 
     # ──────────────────────────────
@@ -158,12 +165,20 @@ def main() -> None:
     load_parser = subparsers.add_parser(
         "load",
         help="Load and display database information",
-        usage="rdbm load <database_path>",
+        usage="rdbm load --db-dir <path/to/database/dir> [options]",
         description="Read existing Rockbox database and show information",
-        parents=[parent_parser],
         formatter_class=RichHelpFormatter,
+        add_help=False,
     )
-    load_parser.add_argument("database_path", help="Path to database directory")
+    load_required = load_parser.add_argument_group("Required")
+    load_required.add_argument(
+        "--db-dir",
+        type=Path,
+        required=True,
+        help="Path to database directory",
+    )
+    load_global = load_parser.add_argument_group("Global Options")
+    add_global_options(load_global)
     load_parser.set_defaults(func=cmd_load)
 
     # ──────────────────────────────
@@ -174,21 +189,25 @@ def main() -> None:
         help="Validate database integrity",
         usage="rdbm validate --db-dir <path/to/database/dir> [options]",
         description="Check database files for corruption and structural issues",
-        parents=[parent_parser],
         formatter_class=RichHelpFormatter,
+        add_help=False,
     )
-    validate_parser.add_argument(
+    validate_required = validate_parser.add_argument_group("Required")
+    validate_required.add_argument(
         "--db-dir",
         type=Path,
         required=True,
         help="Path to database directory to validate",
     )
-    validate_parser.add_argument(
+    validate_options = validate_parser.add_argument_group("Options")
+    validate_options.add_argument(
         "-q",
         "--quiet",
         action="store_true",
         help="Quiet mode for automation - only output errors, no progress indicators",
     )
+    validate_global = validate_parser.add_argument_group("Global Options")
+    add_global_options(validate_global)
     validate_parser.set_defaults(func=cmd_validate)
 
     # ──────────────────────────────
@@ -197,13 +216,27 @@ def main() -> None:
     write_parser = subparsers.add_parser(
         "write",
         help="Copy database to new location",
-        usage="rdbm write <database_path> <output_path>",
+        usage="rdbm write --db-dir <path/to/source/database/dir> --output <path/to/destination/dir> [options]",
         description="Load database and write to a different location",
-        parents=[parent_parser],
         formatter_class=RichHelpFormatter,
+        add_help=False,
     )
-    write_parser.add_argument("database_path", help="Path to source database directory")
-    write_parser.add_argument("output_path", help="Path to destination directory")
+    write_required = write_parser.add_argument_group("Required")
+    write_required.add_argument(
+        "--db-dir",
+        type=Path,
+        required=True,
+        help="Path to source database directory",
+    )
+    write_required.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        required=True,
+        help="Path to destination directory",
+    )
+    write_global = write_parser.add_argument_group("Global Options")
+    add_global_options(write_global)
     write_parser.set_defaults(func=cmd_write)
 
     # ──────────────────────────────
@@ -212,19 +245,25 @@ def main() -> None:
     inspect_parser = subparsers.add_parser(
         "inspect",
         help="Inspect raw database file structure",
-        usage="rdbm inspect <database_path> [file_number] [options]",
+        usage="rdbm inspect --db-dir <path/to/database/dir> [--file-number N] [options]",
         description=(
             "Parse and display raw Rockbox database file contents "
             "(low-level inspection)"
         ),
-        parents=[parent_parser],
         formatter_class=RichHelpFormatter,
+        add_help=False,
     )
-    inspect_parser.add_argument("database_path", help="Path to database directory")
-    inspect_parser.add_argument(
-        "file_number",
+    inspect_required = inspect_parser.add_argument_group("Required")
+    inspect_required.add_argument(
+        "--db-dir",
+        type=Path,
+        required=True,
+        help="Path to database directory",
+    )
+    inspect_options = inspect_parser.add_argument_group("Options")
+    inspect_options.add_argument(
+        "--file-number",
         type=int,
-        nargs="?",
         help=(
             "Database file number (0-8): "
             "0=artist, 1=album, 2=genre, 3=title, 4=filename, "
@@ -232,12 +271,14 @@ def main() -> None:
             "Omit for index file."
         ),
     )
-    inspect_parser.add_argument(
+    inspect_options.add_argument(
         "-q",
         "--quiet",
         action="store_true",
         help="Show only header information, not entries",
     )
+    inspect_global = inspect_parser.add_argument_group("Global Options")
+    add_global_options(inspect_global)
     # inspect_parser.add_argument(
     #     "-v",
     #     "--verbose",
