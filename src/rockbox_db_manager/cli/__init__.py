@@ -78,6 +78,11 @@ def main() -> None:
         metavar="SIZE",
         help="Override tag cache size (default: from config, typically 50000)",
     )
+    parent_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output results in JSON format for machine parsing (suppresses progress indicators)",
+    )
 
     parser = argparse.ArgumentParser(
         prog="rdbm",
@@ -167,12 +172,23 @@ def main() -> None:
     validate_parser = subparsers.add_parser(
         "validate",
         help="Validate database integrity",
-        usage="rdbm validate <database_path>",
+        usage="rdbm validate --db-dir <path/to/database/dir> [options]",
         description="Check database files for corruption and structural issues",
         parents=[parent_parser],
         formatter_class=RichHelpFormatter,
     )
-    validate_parser.add_argument("database_path", help="Path to database directory")
+    validate_parser.add_argument(
+        "--db-dir",
+        type=Path,
+        required=True,
+        help="Path to database directory to validate",
+    )
+    validate_parser.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="Quiet mode for automation - only output errors, no progress indicators",
+    )
     validate_parser.set_defaults(func=cmd_validate)
 
     # ──────────────────────────────

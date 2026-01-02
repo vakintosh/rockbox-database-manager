@@ -36,25 +36,25 @@ MAGIC = 0x5443480e
 
 
 TAGS = [
-    'artist', 
-    'album', 
-    'genre', 
-    'title', 
-    'filename', 
-    'composer', 
-    'comment', 
-    'albumartist', 
-    'grouping', 
+    'artist',
+    'album',
+    'genre',
+    'title',
+    'filename',
+    'composer',
+    'comment',
+    'albumartist',
+    'grouping',
 
     'year', # just year, not date?
-    'discnumber', 
-    'tracknumber', 
-    'bitrate', 
+    'discnumber',
+    'tracknumber',
+    'bitrate',
     'length', # in milliseconds
-    'playcount', 
-    'rating', 
-    'playtime', 
-    'lastplayed', 
+    'playcount',
+    'rating',
+    'playtime',
+    'lastplayed',
     'commitid', # how is this calculated?
     'mtime',
     'lastoffset'
@@ -72,7 +72,7 @@ SGALF = dict([ (v,k) for k,v in FLAGS.items() ])
 
 def to_int(s):
     total = 0
-    for c in s[::-1]: 
+    for c in s[::-1]:
         total = total*256
         # In Python 3, iterating over bytes yields integers directly
         total += c if isinstance(c, int) else ord(c)
@@ -85,7 +85,7 @@ def to_str(i, n=0):
         i = i >> 8
     if n:
         if len(s) < n:
-            s = s + (n - len(s))*b'\x00' 
+            s = s + (n - len(s))*b'\x00'
     return s
 
 def mtime_to_unix(mtime):
@@ -132,20 +132,20 @@ class Database(list):
 
         # Use context managers to ensure proper resource cleanup
         file_paths = [os.path.join(self.dir, f"database_{x}.tcd") for x in [0,1,2,3,4,5,6,7,8,"idx"]]
-        
+
         # Open files with context managers
         files = [open(path, "rb+") for path in file_paths]
-        
+
         try:
             # Create mmaps with proper error handling
             mmaps = []
             try:
                 for f in files:
                     mmaps.append(mmap.mmap(f.fileno(), 0))
-                
+
                 idx = mmaps[9]
 
-                self.magic = to_int(idx[0:4]) 
+                self.magic = to_int(idx[0:4])
                 if self.magic != MAGIC:
                     raise ValueError("Incompatible DB version")
                 entry_count = to_int(idx[8:12])
@@ -154,7 +154,7 @@ class Database(list):
                 self.dirty = to_int(idx[20:24])
                 if self.dirty != 0:
                     print("WARNING: DB may be corrupt")
-     
+
                 for n in range(entry_count):
                     e = Entry()
                     e.index = n
@@ -207,7 +207,7 @@ class Database(list):
         # Open files and ensure they're closed even on error
         file_paths = [os.path.join(self.dir, f"database_{x}.tcd") for x in [0,1,2,3,4,5,6,7,8,"idx"]]
         files = [open(path, "wb+") for path in file_paths]
- 
+
         # tag files
         for tn in range(9):
             f = files[tn]
@@ -217,7 +217,7 @@ class Database(list):
             f.write(to_str(self.magic, 4))
             f.write(to_str(0,4)) # placeholder until we know the full length
             f.write(to_str(0,4)) # placeholder until we know the full count
-          
+
             if tn in [3,4]:
                 tags = []
                 for e in self:
@@ -269,7 +269,7 @@ class Database(list):
                     for e in tags[rawtag]:
                         e[tn] = 12 + length
                     length += 4 + length
-            
+
             # go back and fill in the header properly
             f.seek(4)
             f.write(to_str(length, 4))
@@ -284,7 +284,7 @@ class Database(list):
         self.commitid += 1
         f.write(to_str(self.commitid, 4))
         f.write(to_str(1,4)) # set dirty
-        
+
         ids = mapping + TAGS[len(mapping):]
         for e in self:
             # Use bytearray for efficient string building
@@ -296,7 +296,7 @@ class Database(list):
             f.write(s)
             for i in mapping:
                 del e[i]
-    
+
         f.seek(20)
         f.write(to_str(0, 4)) #unmark dirty
 
@@ -313,13 +313,13 @@ class Database(list):
             if FLAGS[1] in e.flags: # deleted
                 to_del.append(e)
             if FLAGS[16] in e.flags: # resurrected
-                e.flags.remove(FLAGS[16]) 
+                e.flags.remove(FLAGS[16])
             if FLAGS[4] in e.flags: # dirty
                 e.flags.remove(FLAGS[4])
         for e in to_del:
             self.remove(e)
-    
-        
+
+
 class Entry(dict):
     def __init__(self):
         dict.__init__(self)

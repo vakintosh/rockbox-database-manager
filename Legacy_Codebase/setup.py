@@ -48,7 +48,7 @@ class Target(object):
     def __init__(self, **kw):
         """ Default class constructor. Update as you need. """
         self.__dict__.update(kw)
-        
+
 
 # Ok, let's explain why I am doing that.
 # Often, data_files, excludes and dll_excludes (but also resources)
@@ -87,12 +87,12 @@ GUI2Exe_Target_1 = Target(
     icon_resources = icon_resources,
     bitmap_resources = bitmap_resources,
     other_resources = other_resources,
-    dest_base = "rbdbgui",    
+    dest_base = "rbdbgui",
     version = "1",
     company_name = "gui",
     copyright = "gui",
     name = "Rockbox Database Manager",
-    
+
     )
 
 # No custom class for UPX compression or Inno Setup script
@@ -100,14 +100,14 @@ GUI2Exe_Target_1 = Target(
 # That's serious now: we have all (or almost all) the options py2exe
 # supports. I put them all even if some of them are usually defaulted
 # and not used. Some of them I didn't even know about.
-                    
+
 setup(
 
     # No UPX or Inno Setup
 
     data_files = data_files,
 
-    options = {"py2exe": {"compressed": 2, 
+    options = {"py2exe": {"compressed": 2,
                           "optimize": 2,
                           "includes": includes,
                           "excludes": excludes,

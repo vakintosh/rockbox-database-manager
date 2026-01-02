@@ -1,7 +1,7 @@
 # =============================================================================
 # Rockbox Database Manager Configuration Example
 # =============================================================================
-# 
+#
 # This file demonstrates all available configuration options for the Rockbox
 # Database Manager. Copy this file to ~/.rdbm/.rdbm_config.toml and customize
 # it to your needs.

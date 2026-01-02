@@ -12,7 +12,8 @@ from rich.table import Table
 
 from ...database import Database
 from ...constants import FILE_TAGS
-from ..utils import ExitCode
+from ..utils import ExitCode, json_output
+from ..schemas import ErrorResponse, ValidationFailedResponse, ValidationSuccessResponse
 
 
 def cmd_validate(args: argparse.Namespace) -> None:
@@ -26,14 +27,32 @@ def cmd_validate(args: argparse.Namespace) -> None:
         10: Invalid input (directory doesn't exist)
         31: Validation failed (database issues found)
     """
-    db_path = Path(args.database_path).resolve()
-    console = Console()
+    db_path = Path(args.db_dir).resolve()
+    quiet = getattr(args, "quiet", False)
+    use_json = getattr(args, "json", False)
+    console = Console(quiet=quiet or use_json)
 
     if not db_path.exists():
+        if use_json:
+            json_output(
+                ErrorResponse(
+                    error="invalid_input",
+                    message=f"Database path does not exist: {db_path}",
+                ),
+                ExitCode.INVALID_INPUT,
+            )
         logging.error("Database path does not exist: %s", db_path)
         sys.exit(ExitCode.INVALID_INPUT)
 
     if not db_path.is_dir():
+        if use_json:
+            json_output(
+                ErrorResponse(
+                    error="invalid_input",
+                    message=f"Database path is not a directory: {db_path}",
+                ),
+                ExitCode.INVALID_INPUT,
+            )
         logging.error("Database path is not a directory: %s", db_path)
         sys.exit(ExitCode.INVALID_INPUT)
 
@@ -43,7 +62,6 @@ def cmd_validate(args: argparse.Namespace) -> None:
     warnings: List[str] = []
 
     # Check if all required files exist
-
     with Progress(
         SpinnerColumn(),
         TextColumn("[cyan]{task.description}"),
@@ -55,16 +73,24 @@ def cmd_validate(args: argparse.Namespace) -> None:
         required_files.append("database_idx.tcd")
 
         missing_files = []
+        empty_files = []
         for filename in required_files:
             filepath = db_path / filename
             if not filepath.exists():
                 missing_files.append(filename)
+            elif filepath.stat().st_size == 0:
+                empty_files.append(filename)
 
         if missing_files:
             issues.append(
                 f"Missing {len(missing_files)} required database files: {', '.join(missing_files)}"
             )
             progress.update(check_task, description="[red]✗ Missing database files")
+        elif empty_files:
+            issues.append(
+                f"Found {len(empty_files)} empty database files: {', '.join(empty_files)}"
+            )
+            progress.update(check_task, description="[red]✗ Empty database files")
         else:
             progress.update(
                 check_task, description="[green]✓ All database files present"
@@ -147,6 +173,16 @@ def cmd_validate(args: argparse.Namespace) -> None:
     console.print()
 
     if issues:
+        if use_json:
+            json_output(
+                ValidationFailedResponse(
+                    errors=issues,
+                    warnings=warnings if warnings else None,
+                    db_path=str(db_path),
+                ),
+                ExitCode.VALIDATION_FAILED,
+            )
+
         console.print("[red bold]✗ Validation Failed[/red bold]\n")
         console.print("[red]Issues found:[/red]")
         for issue in issues:
@@ -160,6 +196,24 @@ def cmd_validate(args: argparse.Namespace) -> None:
         console.print()
         sys.exit(ExitCode.VALIDATION_FAILED)
     else:
+        # Prepare statistics for JSON output
+        tag_stats = {}
+        if not missing_files and "db" in locals():
+            for field in FILE_TAGS:
+                tag_stats[field] = len(db.tagfiles[field].entries)
+            tag_stats["index"] = db.index.count
+
+        if use_json:
+            json_output(
+                ValidationSuccessResponse(
+                    db_path=str(db_path),
+                    entries=tag_stats.get("index", 0),
+                    warnings=warnings if warnings else None,
+                    tag_counts=tag_stats if tag_stats else None,
+                ),
+                ExitCode.SUCCESS,
+            )
+
         console.print("[green bold]✓ Validation Passed[/green bold]\n")
 
         if warnings:

@@ -1,8 +1,12 @@
 """Utility functions for CLI operations."""
 
+import json
 import logging
 import sys
 from enum import IntEnum
+from typing import Union
+
+from pydantic import BaseModel
 
 
 class ExitCode(IntEnum):
@@ -49,3 +53,20 @@ def setup_logging(level: str) -> None:
         datefmt="%Y-%m-%d %H:%M:%S",
         stream=sys.stderr,
     )
+
+
+def json_output(data: Union[BaseModel, dict], exit_code: int = 0) -> None:
+    """Output JSON to stdout and exit with specified code.
+
+    Args:
+        data: Pydantic model or dictionary to output as JSON
+        exit_code: Exit code to use (default: 0)
+    """
+    if isinstance(data, BaseModel):
+        # Use Pydantic's model_dump with exclude_none to omit None values
+        json_str = data.model_dump_json(indent=2, exclude_none=True)
+        print(json_str)
+    else:
+        # Fallback for plain dicts (backwards compatibility)
+        print(json.dumps(data, indent=2))
+    sys.exit(exit_code)

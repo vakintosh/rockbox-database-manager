@@ -5,6 +5,7 @@ from .constants import MAGIC, TAGS, FILE_TAGS, EMBEDDED_TAGS, SUPPORTED_VERSIONS
 from .tagging.tag.tagfile import TagEntry
 import logging
 
+
 class IndexFile:
     def __init__(self, entries=None, tagfiles=None):
         self.magic = MAGIC
@@ -35,9 +36,11 @@ class IndexFile:
         the IndexFile (data size + header size).
 
         """
-        return sum(
-            f.size for k, f in self.tagfiles.items() if k != 'path'
-        ) + self.header_size + self.data_size
+        return (
+            sum(f.size for k, f in self.tagfiles.items() if k != "path")
+            + self.header_size
+            + self.data_size
+        )
 
     @property
     def data_size(self):
@@ -46,38 +49,47 @@ class IndexFile:
     header_size = 6 * 4
 
     def sort(self):
-        self.entries.sort(key = lambda entry: entry.sort)
+        self.entries.sort(key=lambda entry: entry.sort)
 
     def to_file(self, f):
         self.commitid += 1
         self.dirty = 0
-        f.write(struct.pack('IIIIII', self.magic, self.size, self.count,
-                                      self.serial, self.commitid, self.dirty))
+        f.write(
+            struct.pack(
+                "IIIIII",
+                self.magic,
+                self.size,
+                self.count,
+                self.serial,
+                self.commitid,
+                self.dirty,
+            )
+        )
         for entry in self.entries:
             entry.to_file(f)
 
     def write(self, filename, buffer_size=None):
         """Write index file to disk with optional buffering for better I/O performance.
-        
+
         Args:
             filename: Path to write the index file
             buffer_size: Optional buffer size in bytes. If None, uses system default.
                         Recommended: 262144 (256KB) for optimal performance on modern systems.
         """
         if buffer_size is not None:
-            with open(filename, 'wb', buffering=buffer_size) as f:
+            with open(filename, "wb", buffering=buffer_size) as f:
                 self.to_file(f)
         else:
-            with open(filename, 'wb') as f:
+            with open(filename, "wb") as f:
                 self.to_file(f)
-
 
     @staticmethod
     def from_file(f, tagfiles):
-        index = IndexFile(tagfiles = tagfiles)
-        index.magic, size, count, index.serial, index.commitid, index.dirty = \
-            struct.unpack('IIIIII', f.read(4 * 6))
-        
+        index = IndexFile(tagfiles=tagfiles)
+        index.magic, size, count, index.serial, index.commitid, index.dirty = (
+            struct.unpack("IIIIII", f.read(4 * 6))
+        )
+
         # Validate database version
         if index.magic not in SUPPORTED_VERSIONS:
             raise ValueError(
@@ -85,24 +97,23 @@ class IndexFile:
                 f"Supported versions: {[f'{v} (0x{v:08x})' for v in SUPPORTED_VERSIONS]}. "
                 f"File may be corrupted or from a newer Rockbox version."
             )
-        
+
         for i in range(count):
             index.append(IndexEntry.from_file(f, tagfiles))
-        
+
         # Validate size but don't fail - database versions may calculate differently
         if size != index.size:
             logging.warning(
                 f"Database size mismatch: header says {size} bytes, calculated {index.size} bytes. "
                 f"This may indicate a version difference or corrupted database, but continuing anyway."
             )
-        
+
         return index
 
     @staticmethod
     def read(filename, tagfiles):
-        with open(filename, 'rb') as f:
+        with open(filename, "rb") as f:
             return IndexFile.from_file(f, tagfiles)
-
 
 
 class IndexEntry(dict):
@@ -114,6 +125,7 @@ class IndexEntry(dict):
 
     def __getattr__(self, name):
         return self[name]
+
     def __setattr__(self, name, value):
         self[name] = value
 
@@ -128,15 +140,15 @@ class IndexEntry(dict):
         for field in FILE_TAGS:
             tagentry = self[field]
             assert isinstance(tagentry, TagEntry) and tagentry.offset is not None
-            f.write(struct.pack('I', tagentry.offset))
+            f.write(struct.pack("I", tagentry.offset))
 
         for field in EMBEDDED_TAGS:
-            f.write(struct.pack('I', self[field]))
+            f.write(struct.pack("I", self[field]))
 
     @staticmethod
     def from_file(f, tagfiles):
         """Read the index entry from a file.
-         
+
         If tagfiles is a dictionary of { field: TagFile } pairs, which will be
         used to extract the actual TagEntry for each offset in the file.
 
@@ -144,17 +156,17 @@ class IndexEntry(dict):
 
         index_entry = IndexEntry()
         for field in FILE_TAGS:
-            offset = struct.unpack('I', f.read(4))[0]
-            
+            offset = struct.unpack("I", f.read(4))[0]
+
             # Handle invalid or missing offsets gracefully
             if offset == 0 or offset not in tagfiles[field].offsets:
                 # Create a placeholder entry for invalid/missing references
-                index_entry[field] = TagEntry('<Invalid Reference>')
+                index_entry[field] = TagEntry("<Invalid Reference>")
             else:
                 index_entry[field] = tagfiles[field].offsets[offset]
 
         for field in EMBEDDED_TAGS:
-            index_entry[field] = struct.unpack('I', f.read(4))[0]
+            index_entry[field] = struct.unpack("I", f.read(4))[0]
         index_entry.mtime = fat_to_mtime(index_entry.mtime)
 
         return index_entry

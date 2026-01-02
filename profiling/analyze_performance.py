@@ -18,22 +18,22 @@ def analyze_profile(profile_file: str, top_n: int = 30):
     if not Path(profile_file).exists():
         print(f"Error: Profile file not found: {profile_file}")
         return
-    
+
     print(f"Analyzing: {profile_file}")
     print("=" * 70)
-    
+
     stats = pstats.Stats(profile_file)
-    
+
     print(f"\n=== Top {top_n} functions by cumulative time ===")
-    stats.sort_stats('cumulative')
+    stats.sort_stats("cumulative")
     stats.print_stats(top_n)
-    
+
     print(f"\n=== Top {top_n} functions by total time ===")
-    stats.sort_stats('tottime')
+    stats.sort_stats("tottime")
     stats.print_stats(top_n)
-    
+
     print(f"\n=== Top {top_n} functions by call count ===")
-    stats.sort_stats('calls')
+    stats.sort_stats("calls")
     stats.print_stats(top_n)
 
 
@@ -42,23 +42,23 @@ def compare_profiles(file1: str, file2: str):
     if not Path(file1).exists() or not Path(file2).exists():
         print("Error: One or both profile files not found")
         return
-    
-    print(f"Comparing profiles:")
+
+    print("Comparing profiles:")
     print(f"  Baseline: {file1}")
     print(f"  Current:  {file2}")
     print("=" * 70)
-    
+
     stats1 = pstats.Stats(file1)
     stats2 = pstats.Stats(file2)
-    
+
     # Get total times
     total1 = stats1.total_tt
     total2 = stats2.total_tt
-    
-    print(f"\nTotal execution time:")
+
+    print("\nTotal execution time:")
     print(f"  Baseline: {total1:.3f}s")
     print(f"  Current:  {total2:.3f}s")
-    
+
     if total1 > 0:
         change = ((total2 - total1) / total1) * 100
         if change > 0:
@@ -66,10 +66,10 @@ def compare_profiles(file1: str, file2: str):
         elif change < 0:
             print(f"  Change:   {change:.1f}% (faster) ✓")
         else:
-            print(f"  Change:   No change")
-    
+            print("  Change:   No change")
+
     print("\n=== Top 20 functions by cumulative time (Current) ===")
-    stats2.sort_stats('cumulative')
+    stats2.sort_stats("cumulative")
     stats2.print_stats(20)
 
 
@@ -88,12 +88,12 @@ def print_usage():
     print("  python analyze_performance.py --compare old.prof new.prof")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     if len(sys.argv) < 2:
         print_usage()
         sys.exit(1)
-    
-    if sys.argv[1] == '--compare':
+
+    if sys.argv[1] == "--compare":
         if len(sys.argv) < 4:
             print("Error: --compare requires two profile files")
             print_usage()

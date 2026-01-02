@@ -4,6 +4,7 @@ import pytest
 import time
 import struct
 import logging
+import json
 
 from pathlib import Path
 from unittest.mock import patch, Mock
@@ -14,6 +15,13 @@ from rockbox_db_manager.constants import MAGIC
 from rockbox_db_manager.cli import main, __version__
 from rockbox_db_manager.cli.utils import setup_logging
 from rockbox_db_manager.cli.commands.watch import MusicDirectoryEventHandler
+from rockbox_db_manager.cli.schemas import (
+    ErrorResponse,
+    ValidationSuccessResponse,
+    ValidationFailedResponse,
+    LoadSuccessResponse,
+    WriteSuccessResponse,
+)
 
 
 def test_version_output(capsys):
@@ -99,14 +107,14 @@ def test_validate_help(capsys):
 
     assert exc_info.value.code == 0
     captured = capsys.readouterr()
-    assert "database_path" in captured.out
+    assert "--db-dir" in captured.out
     assert "Check database" in captured.out or "integrity" in captured.out
 
 
 def test_validate_missing_path(capsys):
     """Test validate command with non-existent path."""
     with pytest.raises(SystemExit) as exc_info:
-        with patch("sys.argv", ["rdbm", "validate", "/nonexistent/path"]):
+        with patch("sys.argv", ["rdbm", "validate", "--db-dir", "/nonexistent/path"]):
             main()
 
     assert exc_info.value.code == 10  # ExitCode.INVALID_INPUT
@@ -119,7 +127,7 @@ def test_validate_missing_files(capsys, tmp_path):
     db_dir.mkdir()
 
     with pytest.raises(SystemExit) as exc_info:
-        with patch("sys.argv", ["rdbm", "validate", str(db_dir)]):
+        with patch("sys.argv", ["rdbm", "validate", "--db-dir", str(db_dir)]):
             main()
 
     assert exc_info.value.code == 31  # ExitCode.VALIDATION_FAILED
@@ -158,7 +166,7 @@ def test_validate_valid_database(tmp_path):
         )
 
     with pytest.raises(SystemExit) as exc_info:
-        with patch("sys.argv", ["rdbm", "validate", str(db_dir)]):
+        with patch("sys.argv", ["rdbm", "validate", "--db-dir", str(db_dir)]):
             main()
 
     assert exc_info.value.code == 0  # ExitCode.SUCCESS
@@ -587,3 +595,489 @@ def test_music_directory_event_handler_should_regenerate_resets_flag(tmp_path):
     handler.last_event_time = time.time() - 3
 
     assert not handler.should_regenerate()
+
+
+# ============================================================================
+# JSON Output Tests (--json flag)
+# ============================================================================
+
+
+def test_validate_json_valid_database(tmp_path, capsys):
+    """Test validate command with --json flag on valid database."""
+    db_dir = tmp_path / "db"
+    db_dir.mkdir()
+
+    # Create all required database files with proper structure
+    for i in range(9):  # 9 tag files
+        tag_file = db_dir / f"database_{i}.tcd"
+        with open(tag_file, "wb") as f:
+            magic = MAGIC
+            datasize = 0
+            entry_count = 0
+            f.write(struct.pack("<III", magic, datasize, entry_count))
+
+    # Index file
+    index_file = db_dir / "database_idx.tcd"
+    with open(index_file, "wb") as f:
+        magic = MAGIC
+        datasize = 0
+        entry_count = 0
+        serial = 0
+        commitid = 1
+        dirty = 0
+        f.write(
+            struct.pack(
+                "<IIIIII", magic, datasize, entry_count, serial, commitid, dirty
+            )
+        )
+
+    with pytest.raises(SystemExit) as exc_info:
+        with patch("sys.argv", ["rdbm", "validate", "--db-dir", str(db_dir), "--json"]):
+            main()
+
+    assert exc_info.value.code == 0
+    captured = capsys.readouterr()
+
+    # Parse JSON output
+    json_data = json.loads(captured.out)
+
+    # Validate using Pydantic schema
+    response = ValidationSuccessResponse(**json_data)
+    assert response.status == "valid"
+    assert response.db_path == str(db_dir)
+    assert response.entries == 0
+    assert "tag_counts" in json_data
+
+
+def test_validate_json_missing_files(tmp_path, capsys):
+    """Test validate command with --json flag when database files are missing."""
+    db_dir = tmp_path / "db"
+    db_dir.mkdir()
+
+    with pytest.raises(SystemExit) as exc_info:
+        with patch("sys.argv", ["rdbm", "validate", "--db-dir", str(db_dir), "--json"]):
+            main()
+
+    assert exc_info.value.code == 31  # VALIDATION_FAILED
+    captured = capsys.readouterr()
+
+    # Parse JSON output
+    json_data = json.loads(captured.out)
+
+    # Validate using Pydantic schema
+    response = ValidationFailedResponse(**json_data)
+    assert response.status == "invalid"
+    assert len(response.errors) > 0
+    assert "missing" in " ".join(response.errors).lower()
+
+
+def test_validate_json_nonexistent_path(capsys):
+    """Test validate command with --json flag on non-existent path."""
+    with pytest.raises(SystemExit) as exc_info:
+        with patch(
+            "sys.argv", ["rdbm", "validate", "--db-dir", "/nonexistent/path", "--json"]
+        ):
+            main()
+
+    assert exc_info.value.code == 10  # INVALID_INPUT
+    captured = capsys.readouterr()
+
+    # Parse JSON output
+    json_data = json.loads(captured.out)
+
+    # Validate using Pydantic schema
+    response = ErrorResponse(**json_data)
+    assert response.status == "error"
+    assert response.error == "invalid_input"
+    assert "does not exist" in response.message
+
+
+def test_load_json_valid_database(tmp_path, capsys):
+    """Test load command with --json flag on valid database."""
+    from rockbox_db_manager.database import Database
+
+    # Reset logging to avoid interference from previous tests
+    for handler in logging.root.handlers[:]:
+        logging.root.removeHandler(handler)
+
+    db_dir = tmp_path / "db"
+    db_dir.mkdir()
+
+    # Create a proper database using Database.write() with no-op callback to suppress output
+    db = Database()
+    db.write(str(db_dir), callback=lambda *args, **kwargs: None)
+
+    with pytest.raises(SystemExit) as exc_info:
+        with patch(
+            "sys.argv", ["rdbm", "load", str(db_dir), "--json", "--log-level", "debug"]
+        ):
+            main()
+
+    assert exc_info.value.code == 0
+    captured = capsys.readouterr()
+
+    # Parse JSON output
+    json_data = json.loads(captured.out)
+
+    # Validate using Pydantic schema
+    response = LoadSuccessResponse(**json_data)
+    assert response.status == "success"
+    assert response.db_path == str(db_dir)
+    assert response.entries == 0
+    assert isinstance(response.tag_counts, dict)
+    assert len(response.tag_counts) == 9  # 9 tag files
+
+
+def test_load_json_nonexistent_path(capsys):
+    """Test load command with --json flag on non-existent path."""
+    with pytest.raises(SystemExit) as exc_info:
+        with patch("sys.argv", ["rdbm", "load", "/nonexistent/path", "--json"]):
+            main()
+
+    assert exc_info.value.code == 10  # INVALID_INPUT
+    captured = capsys.readouterr()
+
+    # Parse JSON output
+    json_data = json.loads(captured.out)
+
+    # Validate using Pydantic schema
+    response = ErrorResponse(**json_data)
+    assert response.status == "error"
+    assert response.error == "invalid_input"
+    assert "does not exist" in response.message
+
+
+def test_load_json_corrupted_database(tmp_path, capsys):
+    """Test load command with --json flag on corrupted database."""
+    db_dir = tmp_path / "db"
+    db_dir.mkdir()
+
+    # Create a corrupted index file (wrong magic number)
+    index_file = db_dir / "database_idx.tcd"
+    with open(index_file, "wb") as f:
+        f.write(b"CORRUPTED_DATA")
+
+    with pytest.raises(SystemExit) as exc_info:
+        with patch("sys.argv", ["rdbm", "load", str(db_dir), "--json"]):
+            main()
+
+    assert exc_info.value.code == 20  # DATA_ERROR
+    captured = capsys.readouterr()
+
+    # Parse JSON output
+    json_data = json.loads(captured.out)
+
+    # Validate using Pydantic schema
+    response = ErrorResponse(**json_data)
+    assert response.status == "error"
+    assert response.error == "data_error"
+    assert "Failed to load database" in response.message
+
+
+def test_generate_json_nonexistent_path(capsys):
+    """Test generate command with --json flag on non-existent path."""
+    with pytest.raises(SystemExit) as exc_info:
+        with patch(
+            "sys.argv",
+            [
+                "rdbm",
+                "generate",
+                "--music-dir",
+                "/nonexistent/path",
+                "--output",
+                "/tmp/test",
+                "--json",
+            ],
+        ):
+            main()
+
+    assert exc_info.value.code == 10  # INVALID_INPUT
+    captured = capsys.readouterr()
+
+    # Parse JSON output
+    json_data = json.loads(captured.out)
+
+    # Validate using Pydantic schema
+    response = ErrorResponse(**json_data)
+    assert response.status == "error"
+    assert response.error == "invalid_input"
+    assert "does not exist" in response.message
+
+
+def test_write_json_valid_database(tmp_path, capsys):
+    """Test write command with --json flag on valid database."""
+    from rockbox_db_manager.database import Database
+
+    # Reset logging to avoid interference from previous tests
+    for handler in logging.root.handlers[:]:
+        logging.root.removeHandler(handler)
+
+    db_dir = tmp_path / "db"
+    db_dir.mkdir()
+    output_dir = tmp_path / "output"
+
+    # Create a proper database using Database.write() with no-op callback to suppress output
+    db = Database()
+    db.write(str(db_dir), callback=lambda *args, **kwargs: None)
+
+    with pytest.raises(SystemExit) as exc_info:
+        with patch(
+            "sys.argv",
+            [
+                "rdbm",
+                "write",
+                str(db_dir),
+                str(output_dir),
+                "--json",
+                "--log-level",
+                "debug",
+            ],
+        ):
+            main()
+
+    assert exc_info.value.code == 0
+    captured = capsys.readouterr()
+
+    # Parse JSON output
+    json_data = json.loads(captured.out)
+
+    # Validate using Pydantic schema
+    response = WriteSuccessResponse(**json_data)
+    assert response.status == "success"
+    assert response.source == str(db_dir)
+    assert response.destination == str(output_dir)
+    assert response.entries == 0
+
+
+def test_write_json_nonexistent_source(capsys):
+    """Test write command with --json flag on non-existent source."""
+    with pytest.raises(SystemExit) as exc_info:
+        with patch(
+            "sys.argv", ["rdbm", "write", "/nonexistent/path", "/tmp/output", "--json"]
+        ):
+            main()
+
+    assert exc_info.value.code == 10  # INVALID_INPUT
+    captured = capsys.readouterr()
+
+    # Parse JSON output
+    json_data = json.loads(captured.out)
+
+    # Validate using Pydantic schema
+    response = ErrorResponse(**json_data)
+    assert response.status == "error"
+    assert response.error == "invalid_input"
+    assert "does not exist" in response.message
+
+
+def test_write_json_corrupted_database(tmp_path, capsys):
+    """Test write command with --json flag on corrupted database."""
+    db_dir = tmp_path / "db"
+    db_dir.mkdir()
+    output_dir = tmp_path / "output"
+
+    # Create a corrupted index file
+    index_file = db_dir / "database_idx.tcd"
+    with open(index_file, "wb") as f:
+        f.write(b"CORRUPTED_DATA")
+
+    with pytest.raises(SystemExit) as exc_info:
+        with patch(
+            "sys.argv", ["rdbm", "write", str(db_dir), str(output_dir), "--json"]
+        ):
+            main()
+
+    assert exc_info.value.code == 20  # DATA_ERROR
+    captured = capsys.readouterr()
+
+    # Parse JSON output
+    json_data = json.loads(captured.out)
+
+    # Validate using Pydantic schema
+    response = ErrorResponse(**json_data)
+    assert response.status == "error"
+    assert response.error == "data_error"
+    assert "Failed to load database" in response.message
+
+
+def test_validate_json_quiet_mode_suppresses_output(tmp_path, capsys):
+    """Test that --json and --quiet work together properly."""
+    db_dir = tmp_path / "db"
+    db_dir.mkdir()
+
+    # Create valid database
+    for i in range(9):
+        tag_file = db_dir / f"database_{i}.tcd"
+        with open(tag_file, "wb") as f:
+            magic = MAGIC
+            datasize = 0
+            entry_count = 0
+            f.write(struct.pack("<III", magic, datasize, entry_count))
+
+    index_file = db_dir / "database_idx.tcd"
+    with open(index_file, "wb") as f:
+        magic = MAGIC
+        datasize = 0
+        entry_count = 0
+        serial = 0
+        commitid = 1
+        dirty = 0
+        f.write(
+            struct.pack(
+                "<IIIIII", magic, datasize, entry_count, serial, commitid, dirty
+            )
+        )
+
+    with pytest.raises(SystemExit) as exc_info:
+        with patch(
+            "sys.argv",
+            ["rdbm", "validate", "--db-dir", str(db_dir), "--json", "--quiet"],
+        ):
+            main()
+
+    assert exc_info.value.code == 0
+    captured = capsys.readouterr()
+
+    # Should only have JSON output, no progress indicators
+    json_data = json.loads(captured.out)
+    assert json_data["status"] == "valid"
+
+    # Stderr should not have progress bars (logging warnings are acceptable)
+    # We just verify JSON mode works with quiet mode, not that stderr is completely empty
+    assert "Reading" not in captured.err or "done" not in captured.err
+
+
+def test_json_output_structure_validate_success(tmp_path, capsys):
+    """Test that validate --json output has all expected fields."""
+    db_dir = tmp_path / "db"
+    db_dir.mkdir()
+
+    # Create valid database
+    for i in range(9):
+        tag_file = db_dir / f"database_{i}.tcd"
+        with open(tag_file, "wb") as f:
+            magic = MAGIC
+            datasize = 0
+            entry_count = 0
+            f.write(struct.pack("<III", magic, datasize, entry_count))
+
+    index_file = db_dir / "database_idx.tcd"
+    with open(index_file, "wb") as f:
+        magic = MAGIC
+        datasize = 0
+        entry_count = 0
+        serial = 0
+        commitid = 1
+        dirty = 0
+        f.write(
+            struct.pack(
+                "<IIIIII", magic, datasize, entry_count, serial, commitid, dirty
+            )
+        )
+
+    with pytest.raises(SystemExit):
+        with patch("sys.argv", ["rdbm", "validate", "--db-dir", str(db_dir), "--json"]):
+            main()
+
+    captured = capsys.readouterr()
+    json_data = json.loads(captured.out)
+
+    # Check required fields
+    assert "status" in json_data
+    assert "db_path" in json_data
+    assert "entries" in json_data
+    assert "tag_counts" in json_data
+
+    # Check types
+    assert isinstance(json_data["status"], str)
+    assert isinstance(json_data["db_path"], str)
+    assert isinstance(json_data["entries"], int)
+    assert isinstance(json_data["tag_counts"], dict)
+
+
+def test_json_output_structure_load_success(tmp_path, capsys):
+    """Test that load --json output has all expected fields."""
+    from rockbox_db_manager.database import Database
+
+    # Reset logging to avoid interference from previous tests
+    for handler in logging.root.handlers[:]:
+        logging.root.removeHandler(handler)
+
+    db_dir = tmp_path / "db"
+    db_dir.mkdir()
+
+    # Create a proper database using Database.write() with no-op callback to suppress output
+    db = Database()
+    db.write(str(db_dir), callback=lambda *args, **kwargs: None)
+
+    with pytest.raises(SystemExit):
+        with patch(
+            "sys.argv", ["rdbm", "load", str(db_dir), "--json", "--log-level", "debug"]
+        ):
+            main()
+
+    captured = capsys.readouterr()
+    json_data = json.loads(captured.out)
+
+    # Check required fields
+    assert "status" in json_data
+    assert "db_path" in json_data
+    assert "entries" in json_data
+    assert "tag_counts" in json_data
+
+    # Check types
+    assert isinstance(json_data["status"], str)
+    assert isinstance(json_data["db_path"], str)
+    assert isinstance(json_data["entries"], int)
+    assert isinstance(json_data["tag_counts"], dict)
+
+    # Validate tag_counts has all expected keys
+    expected_tags = [
+        "artist",
+        "album",
+        "genre",
+        "title",
+        "path",
+        "composer",
+        "comment",
+        "album artist",
+        "grouping",
+    ]
+    for tag in expected_tags:
+        assert tag in json_data["tag_counts"]
+
+
+def test_json_output_parseable_all_error_cases(capsys):
+    """Test that all error responses produce parseable JSON."""
+    error_cases = [
+        (["rdbm", "validate", "--db-dir", "/nonexistent", "--json"], 10),
+        (["rdbm", "load", "/nonexistent", "--json"], 10),
+        (["rdbm", "write", "/nonexistent", "/tmp/out", "--json"], 10),
+        (
+            [
+                "rdbm",
+                "generate",
+                "--music-dir",
+                "/nonexistent",
+                "--output",
+                "/tmp/out",
+                "--json",
+            ],
+            10,
+        ),
+    ]
+
+    for args, expected_code in error_cases:
+        with pytest.raises(SystemExit) as exc_info:
+            with patch("sys.argv", args):
+                main()
+
+        assert exc_info.value.code == expected_code
+        captured = capsys.readouterr()
+
+        # Verify JSON is parseable
+        json_data = json.loads(captured.out)
+        assert "status" in json_data
+        assert json_data["status"] == "error"
+        assert "error" in json_data
+        assert "message" in json_data

@@ -6,31 +6,31 @@ mapping = [0,1,2,3,4,5,6,7,8]
 MAGIC = 1413695500
 
 # tags are encoded in latin-1
-# text tags like artist are someitmes padded out with XXXXes, presumably 
+# text tags like artist are someitmes padded out with XXXXes, presumably
 #   for easy expansion (lengths padded to: 4+8*n)
 # number tags are 0 for not given or undefined
 TAGS = [
     # this first 9 are byte offsets for the entries in the separated indicies
-    'artist', 
-    'album', 
-    'genre', 
-    'title', 
-    'filename', 
-    'composer', 
-    'comment', 
-    'albumartist', 
-    'grouping', 
+    'artist',
+    'album',
+    'genre',
+    'title',
+    'filename',
+    'composer',
+    'comment',
+    'albumartist',
+    'grouping',
 
     # the remainder are embedded in the main db
     'year', # just year, not date?
-    'discnumber', 
-    'tracknumber', 
-    'bitrate', 
+    'discnumber',
+    'tracknumber',
+    'bitrate',
     'length', # in milliseconds
-    'playcount', 
-    'rating', 
-    'playtime', 
-    'lastplayed', 
+    'playcount',
+    'rating',
+    'playtime',
+    'lastplayed',
     'commitid', # how is this calculated?
     'mtime'
     ]
@@ -46,7 +46,7 @@ FLAGS = {
 
 def to_int(s):
     total = 0
-    for c in s[::-1]: 
+    for c in s[::-1]:
         total = total*256
         total += ord(c)
     return total
@@ -218,11 +218,10 @@ if __name__ == '__main__':
 
     print "Reading DB ", filename
     print "File size: ", os.path.getsize(filename)
-    
+
     if num == "idx":
         res = parse_indexfile(filename)
     else:
         res = parse_tagfile(filename)
-    
-    print res
 
+    print res

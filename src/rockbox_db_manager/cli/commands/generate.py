@@ -3,6 +3,7 @@
 import argparse
 import logging
 import sys
+import time
 from pathlib import Path
 
 from rich.progress import (
@@ -18,8 +19,10 @@ from rich.table import Table
 from ...database import Database
 from ...database.cache import TagCache
 from ...config import Config
+from ...constants import FILE_TAGS
 from ..callbacks import ProgressCallback, log_callback
-from ..utils import ExitCode
+from ..utils import ExitCode, json_output
+from ..schemas import ErrorResponse, GenerateSuccessResponse
 
 
 def cmd_generate(args: argparse.Namespace) -> None:
@@ -37,13 +40,31 @@ def cmd_generate(args: argparse.Namespace) -> None:
         32: Database write failed
         41: Operation cancelled (Ctrl+C)
     """
+    start_time = time.time()
+    use_json = getattr(args, "json", False)
     music_path = Path(args.music_dir).resolve()
 
     if not music_path.exists():
+        if use_json:
+            json_output(
+                ErrorResponse(
+                    error="invalid_input",
+                    message=f"Music path does not exist: {music_path}",
+                ),
+                ExitCode.INVALID_INPUT,
+            )
         logging.error("Music path does not exist: %s", music_path)
         sys.exit(ExitCode.INVALID_INPUT)
 
     if not music_path.is_dir():
+        if use_json:
+            json_output(
+                ErrorResponse(
+                    error="invalid_input",
+                    message=f"Music path is not a directory: {music_path}",
+                ),
+                ExitCode.INVALID_INPUT,
+            )
         logging.error("Music path is not a directory: %s", music_path)
         sys.exit(ExitCode.INVALID_INPUT)
 
@@ -51,6 +72,9 @@ def cmd_generate(args: argparse.Namespace) -> None:
 
     # Create database instance
     db = Database()
+
+    # Suppress console output if JSON mode
+    console = Console(quiet=use_json)
 
     # Configure parallelization
     if hasattr(args, "no_parallel") and args.no_parallel:
@@ -65,6 +89,14 @@ def cmd_generate(args: argparse.Namespace) -> None:
     if args.config:
         config_path = Path(args.config)
         if not config_path.exists():
+            if use_json:
+                json_output(
+                    ErrorResponse(
+                        error="invalid_config",
+                        message=f"Config file does not exist: {config_path}",
+                    ),
+                    ExitCode.INVALID_CONFIG,
+                )
             logging.error("Config file does not exist: %s", config_path)
             sys.exit(ExitCode.INVALID_CONFIG)
 
@@ -244,7 +276,47 @@ def cmd_generate(args: argparse.Namespace) -> None:
 
     console.print("[green]✓[/green] Database generation complete")
 
-    # Print summary table
+    duration_ms = int((time.time() - start_time) * 1000)
+
+    # JSON output mode
+    if use_json:
+        # Count entries per tag file
+        tag_counts = {}
+        for field in FILE_TAGS:
+            tag_counts[field] = len(db.tagfiles[field].entries)
+
+        # Exit with appropriate code
+        if failed_files > total_files * 0.1:  # More than 10% failed
+            json_output(
+                GenerateSuccessResponse(
+                    status="completed_with_errors",
+                    input_dir=str(music_path),
+                    output_dir=str(output_path),
+                    tracks=db.index.count,
+                    files_scanned=total_files,
+                    files_failed=failed_files,
+                    duration_ms=duration_ms,
+                    warning=f"High failure rate: {failed_files}/{total_files} files failed",
+                    **tag_counts,  # Unpack tag counts as extra fields
+                ),
+                ExitCode.DATA_ERROR,
+            )
+
+        json_output(
+            GenerateSuccessResponse(
+                status="success",
+                input_dir=str(music_path),
+                output_dir=str(output_path),
+                tracks=db.index.count,
+                files_scanned=total_files,
+                files_failed=failed_files,
+                duration_ms=duration_ms,
+                **tag_counts,  # Unpack tag counts as extra fields
+            ),
+            ExitCode.SUCCESS,
+        )
+
+    # Print summary table (normal mode)
     table = Table(title="\nDatabase Summary")
     table.add_column("Field", style="cyan")
     table.add_column("Value", style="magenta")
