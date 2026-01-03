@@ -84,8 +84,12 @@ def add_global_options(parser_group):
     )
 
 
-def main() -> None:
-    """Main CLI entry point."""
+def parse_args() -> tuple[argparse.ArgumentParser, argparse.Namespace]:
+    """Create and configure argument parser, then parse command-line arguments.
+
+    Returns:
+        tuple: (parser, args) - The ArgumentParser instance and parsed arguments.
+    """
 
     # Main parser
     parser = argparse.ArgumentParser(
@@ -285,8 +289,12 @@ def main() -> None:
     inspect_parser.set_defaults(func=cmd_inspect)
 
     # Parse args
-    args = parser.parse_args()
+    return parser, parser.parse_args()
 
+
+def main():
+    """Main CLI entry point."""
+    parser, args = parse_args()
     # Show help if no command is provided
     if not args.command:
         parser.print_help()
