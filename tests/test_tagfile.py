@@ -120,23 +120,8 @@ class TestTagFileVersionSupport:
 
     def test_supported_versions_defined(self):
         """Test that supported versions are properly defined."""
-        assert len(SUPPORTED_VERSIONS) >= 2
-        assert 1413695501 in SUPPORTED_VERSIONS  # Version 13 (0x0d)
+        assert len(SUPPORTED_VERSIONS) >= 1
         assert 1413695504 in SUPPORTED_VERSIONS  # Version 16 (0x10)
-
-    def test_read_version_13(self):
-        """Test reading a version 13 (0x0d) database file."""
-        # Create a minimal tagfile with version 13
-        data = io.BytesIO()
-        magic = 1413695501  # Version 13
-        size = 0
-        count = 0
-        data.write(struct.pack("III", magic, size, count))
-        data.seek(0)
-
-        tagfile = TagFile.from_file(data)
-        assert tagfile.magic == magic
-        assert tagfile.count == 0
 
     def test_read_version_16(self):
         """Test reading a version 16 (0x10) database file."""

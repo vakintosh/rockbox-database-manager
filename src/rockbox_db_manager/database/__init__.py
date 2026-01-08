@@ -65,9 +65,7 @@ class Database:
 
         # Set database version from config BEFORE calling clear()
         db_version = self.config.get_database_version()
-        if db_version == 13:
-            self.db_magic = 1413695501  # 0x5443480D
-        elif db_version == 16:
+        if db_version == 16:
             self.db_magic = 1413695504  # 0x54434810
         else:
             # Default to version 16 for invalid values
