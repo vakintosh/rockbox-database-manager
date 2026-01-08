@@ -90,8 +90,8 @@ class Config:
             "last_tags_file": "",
         },
         "database": {
-            # Database version: 13 or 16
-            # Version 16 is newer and recommended for recent Rockbox builds
+            # Database version: 16 (only supported version)
+            # Version 16 is for recent Rockbox builds
             "version": 16,
         },
         "performance": {
@@ -288,7 +288,7 @@ class Config:
 
     # Database settings
     def get_database_version(self) -> int:
-        """Get database version (13 or 16).
+        """Get database version (16 only).
 
         Returns:
             Database version number (defaults to 16 if not configured)
@@ -299,7 +299,7 @@ class Config:
         """Set database version.
 
         Args:
-            version: Database version (13 or 16)
+            version: Database version (16 only)
         """
         if "database" not in self.data:
             self.data["database"] = {}
