@@ -1,7 +1,18 @@
 import struct
 
 from .utils import fat_to_mtime, mtime_to_fat
-from .constants import MAGIC, TAGS, FILE_TAGS, EMBEDDED_TAGS, SUPPORTED_VERSIONS
+from .constants import (
+    MAGIC,
+    TAGS,
+    FILE_TAGS,
+    EMBEDDED_TAGS,
+    SUPPORTED_VERSIONS,
+    FLAG_DELETED,
+    FLAG_DIRCACHE,
+    FLAG_DIRTYNUM,
+    FLAG_TRKNUMGEN,
+    FLAG_RESURRECTED,
+)
 from .tagging.tag.tagfile import TagEntry
 import logging
 
@@ -135,6 +146,39 @@ class IndexEntry(dict):
         other = IndexEntry()
         other.update(self)
         return other
+
+    # Flag helper methods to match Rockbox behavior
+    def set_flag(self, flag_bit):
+        """Set a flag bit (OR operation)."""
+        self["flag"] |= flag_bit
+
+    def clear_flag(self, flag_bit):
+        """Clear a flag bit (AND NOT operation)."""
+        self["flag"] &= ~flag_bit
+
+    def has_flag(self, flag_bit):
+        """Check if a flag bit is set."""
+        return bool(self["flag"] & flag_bit)
+
+    def is_deleted(self):
+        """Check if entry is marked as deleted."""
+        return self.has_flag(FLAG_DELETED)
+
+    def is_dircache(self):
+        """Check if filename is a dircache pointer (memory only)."""
+        return self.has_flag(FLAG_DIRCACHE)
+
+    def is_dirty_numeric(self):
+        """Check if numeric data has been modified."""
+        return self.has_flag(FLAG_DIRTYNUM)
+
+    def is_track_num_generated(self):
+        """Check if track number was auto-generated."""
+        return self.has_flag(FLAG_TRKNUMGEN)
+
+    def is_resurrected(self):
+        """Check if statistics were resurrected from old DB."""
+        return self.has_flag(FLAG_RESURRECTED)
 
     def to_file(self, f):
         for field in FILE_TAGS:

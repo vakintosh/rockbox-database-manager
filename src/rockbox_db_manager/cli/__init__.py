@@ -26,6 +26,7 @@ from .commands import (
     cmd_validate,
     cmd_write,
     cmd_inspect,
+    cmd_update,
 )
 from ..config import Config
 from ..database.cache import TagCache
@@ -40,6 +41,7 @@ __all__ = [
     "cmd_validate",
     "cmd_write",
     "cmd_inspect",
+    "cmd_update",
     "setup_logging",
 ]
 
@@ -287,6 +289,48 @@ def parse_args() -> tuple[argparse.ArgumentParser, argparse.Namespace]:
     #     help="Show complete raw output",
     # )
     inspect_parser.set_defaults(func=cmd_inspect)
+
+    # ──────────────────────────────
+    # update
+    # ──────────────────────────────
+    update_parser = subparsers.add_parser(
+        "update",
+        help="Update database with new/deleted files (delta update)",
+        usage="rdbm update --db-dir <path/to/database> --music-dir <path/to/music> [options]",
+        description=(
+            "Incrementally update an existing database:\n"
+            "  • Scans for new files not in the database\n"
+            "  • Marks missing files as deleted (preserves statistics)\n"
+            "  • Faster than full rebuild\n"
+            "  • Preserves playcount, rating, lastplayed, and other stats\n\n"
+            "This is similar to Rockbox's 'Update Now' feature."
+        ),
+        formatter_class=RichHelpFormatter,
+        add_help=False,
+    )
+    update_required = update_parser.add_argument_group("Required")
+    update_required.add_argument(
+        "--db-dir",
+        type=Path,
+        required=True,
+        help="Path to existing database directory",
+    )
+    update_required.add_argument(
+        "--music-dir",
+        type=Path,
+        required=True,
+        help="Path to music directory to scan",
+    )
+    update_options = update_parser.add_argument_group("Options")
+    update_options.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        help="Output directory (default: update database in place)",
+    )
+    update_global = update_parser.add_argument_group("Global Options")
+    add_global_options(update_global)
+    update_parser.set_defaults(func=cmd_update)
 
     # Parse args
     return parser, parser.parse_args()

@@ -144,6 +144,7 @@ rdbm generate --help
 The `rdbm` command provides several subcommands for database management:
 
 - **`generate`** - Create Rockbox database from music folder
+- **`update`** - Update database with new/deleted files (delta update)
 - **`load`** - Display existing database information
 - **`validate`** - Check database integrity
 - **`inspect`** - Low-level file inspection
@@ -153,14 +154,34 @@ For detailed options and usage:
 ```bash
 rdbm --help              # List all commands
 rdbm generate --help     # Help for specific command
+rdbm update --help       # Help for update command
 ```
 
 **Key Features:**
 - Tag caching for faster regeneration (`--save-tags` / `--load-tags`)
+- Delta updates to add new files without full rebuild (`update` command)
 - Configuration file support (`--config`)
 - JSON output for automation (`--json`)
 - Parallel processing (auto-configured, or use `--workers N`)
 - Detailed logging levels (`--log-level debug`)
+
+#### Update Command (Delta Update)
+
+The `update` command performs incremental database updates similar to Rockbox's "Update Now" feature:
+
+```bash
+# Update existing database with new/deleted files
+rdbm update --db-dir /path/to/database --music-dir /path/to/music
+
+# Update and write to different location
+rdbm update --db-dir /path/to/database --music-dir /path/to/music --output /path/to/output
+```
+
+**Benefits of Delta Update:**
+- ✓ Faster than full rebuild (only processes new files)
+- ✓ Preserves playcount, rating, lastplayed statistics
+- ✓ Marks missing files as deleted (doesn't remove them)
+- ✓ Perfect for adding new albums to existing database
 
 ### GUI Application
 

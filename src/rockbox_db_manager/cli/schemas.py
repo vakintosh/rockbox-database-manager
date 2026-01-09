@@ -181,6 +181,41 @@ class WriteSuccessResponse(BaseModel):
 
 
 # ============================================================================
+# Update Command Response
+# ============================================================================
+
+
+class UpdateSuccessResponse(BaseModel):
+    """Response for successful database update.
+
+    Attributes:
+        status: Always "success"
+        db_path: Path to original database
+        music_dir: Path to music directory scanned
+        output_dir: Path where updated database was written
+        original_entries: Number of entries before update
+        final_entries: Number of entries after update
+        added: Number of new files added
+        deleted: Number of files marked as deleted
+        unchanged: Number of existing entries preserved
+        failed: Number of files that failed to process
+        duration_ms: Update duration in milliseconds
+    """
+
+    status: Literal["success"] = "success"
+    db_path: str = Field(description="Path to original database")
+    music_dir: str = Field(description="Path to music directory")
+    output_dir: str = Field(description="Path to output database")
+    original_entries: int = Field(ge=0, description="Original entry count")
+    final_entries: int = Field(ge=0, description="Final entry count")
+    added: int = Field(ge=0, description="New files added")
+    deleted: int = Field(ge=0, description="Files marked as deleted")
+    unchanged: int = Field(ge=0, description="Existing entries preserved")
+    failed: int = Field(ge=0, description="Files that failed to process")
+    duration_ms: int = Field(ge=0, description="Update duration (ms)")
+
+
+# ============================================================================
 # Type Unions for Each Command
 # ============================================================================
 
@@ -189,3 +224,4 @@ ValidateResponse = ValidationSuccessResponse | ValidationFailedResponse | ErrorR
 LoadResponse = LoadSuccessResponse | ErrorResponse
 GenerateResponse = GenerateSuccessResponse | ErrorResponse
 WriteResponse = WriteSuccessResponse | ErrorResponse
+UpdateResponse = UpdateSuccessResponse | ErrorResponse

@@ -18,7 +18,7 @@ try:
 except ImportError:
     titleformat = None  # type: ignore[assignment]
 
-from ..constants import FILE_TAGS, EMBEDDED_TAGS
+from ..constants import FILE_TAGS, EMBEDDED_TAGS, FLAG_TRKNUMGEN
 from ..utils import mtime_to_fat
 from ..tagging.tag.tagfile import TagEntry
 from ..indexfile import IndexEntry
@@ -62,6 +62,7 @@ class DatabaseGenerator:
         index,
         use_parallel: bool = True,
         callback: Optional[Callable] = myprint,
+        preserve_existing: bool = False,
     ) -> Dict[str, TagEntry]:
         """Generate the database from cached tags.
 
@@ -72,6 +73,7 @@ class DatabaseGenerator:
             index: IndexFile object to populate
             use_parallel: Whether to use parallel processing
             callback: Progress callback function
+            preserve_existing: If True, don't clear existing entries (for updates)
 
         Returns:
             Dictionary of multiple_fields with blank TagEntry values
@@ -342,7 +344,27 @@ class DatabaseGenerator:
         # Length is milliseconds
         entry.length = int(tags["length"][0] * 1000)
 
+        # Initialize flag field (cleared by IndexEntry.__init__)
+        entry.flag = 0
+
+        # Handle track number - if missing or < 0, set FLAG_TRKNUMGEN
+        # (Matches Rockbox logic from add_tagcache() in tagcache.c)
+        try:
+            tracknumber = int(tags.get("tracknumber", [0])[0])
+            if tracknumber < 0:
+                entry.tracknumber = 0
+                entry.set_flag(FLAG_TRKNUMGEN)
+            else:
+                entry.tracknumber = tracknumber
+        except (ValueError, TypeError, IndexError):
+            entry.tracknumber = 0
+            entry.set_flag(FLAG_TRKNUMGEN)
+
+        # Process other numeric embedded tags
         for field in EMBEDDED_TAGS:
+            if field in ("tracknumber", "flag", "mtime", "length"):
+                continue  # Already handled above
+
             try:
                 formatted_value = str(formats[field].format(tags))
                 formatted_value = formatted_value.strip()
@@ -361,12 +383,82 @@ class DatabaseGenerator:
         for field, blank_tag in multiple_fields.items():
             multiple_tags[field] = [blank_tag]
 
+        # Handle artist, albumartist, and canonicalartist
+        # (Matches Rockbox logic from add_tagcache())
+        has_artist = False
+        artist_value = None
+        albumartist_value = None
+
         for field in FILE_TAGS:
             try:
                 fmt, sort = formats[field]
             except KeyError:
                 continue
 
+            # Special handling for canonicalartist
+            if field == "canonicalartist":
+                # canonicalartist = artist if artist exists, else albumartist
+                # This matches Rockbox: ADD_TAG(entry, tag_virt_canonicalartist, &id3.artist) or &id3.albumartist
+                if has_artist and artist_value:
+                    value = artist_value
+                else:
+                    # Fall back to album artist
+                    value = albumartist_value if albumartist_value else "<Untagged>"
+
+                try:
+                    tagentry = tagfiles[field][value]
+                except KeyError:
+                    tagentry = TagEntry(value)
+                    if sort is not None:
+                        tagentry.sort = (
+                            sort.format(tags)
+                            if has_artist
+                            else (albumartist_value or "<Untagged>")
+                        )
+                    tagfiles[field].append(tagentry)
+                entry[field] = tagentry
+                continue
+
+            # Store artist and albumartist for canonicalartist logic
+            if field == "artist":
+                artist_value = fmt.format(tags)
+                has_artist = bool(
+                    artist_value
+                    and artist_value.strip()
+                    and artist_value != "<Untagged>"
+                )
+            elif field == "album artist":
+                albumartist_value = fmt.format(tags)
+
+            # Special handling for grouping field
+            # (Matches Rockbox: if has_grouping then id3.grouping else id3.title)
+            if field == "grouping":
+                grouping_value = fmt.format(tags)
+                has_grouping = bool(
+                    grouping_value
+                    and grouping_value.strip()
+                    and grouping_value != "<Untagged>"
+                )
+                if not has_grouping:
+                    # Fall back to title
+                    try:
+                        value = tags["title"][0]
+                    except (KeyError, IndexError):
+                        value = "<Untagged>"
+                else:
+                    value = grouping_value
+
+                try:
+                    tagentry = tagfiles[field][value]
+                except KeyError:
+                    tagentry = TagEntry(value)
+                    if sort is not None:
+                        tagentry.sort = sort.format(tags) if has_grouping else value
+                    tagfiles[field].append(tagentry)
+                entry[field] = tagentry
+                continue
+
+            # Normal field processing
             if field not in multiple_tags:
                 value = fmt.format(tags)
                 try:

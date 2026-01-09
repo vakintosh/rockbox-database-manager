@@ -17,7 +17,7 @@ import multiprocessing
 from typing import Optional, Callable, List
 import logging
 
-from ..constants import FORMATTED_TAGS, FILE_TAGS
+from ..constants import FORMATTED_TAGS, FILE_TAGS, FLAG_DELETED
 from ..tagging.tag.tagfile import TagFile
 from ..indexfile import IndexFile
 from ..config import Config
@@ -94,7 +94,10 @@ class Database:
         # Set default formats
         for field in FORMATTED_TAGS:
             self.set_format(field, "%" + field + "%")
-        self.set_format("grouping", "%title%")
+        # canonicalartist defaults to artist (will fallback to albumartist if artist is empty)
+        self.set_format("canonicalartist", "%artist%")
+        # grouping defaults to itself (will fallback to title if grouping is empty)
+        self.set_format("grouping", "%grouping%")
 
     def clear(self):
         """Clear the database tagfiles and index."""
@@ -263,6 +266,121 @@ class Database:
         self.multiple_fields = self._generator.generate(
             self.paths, self.formats, self.tagfiles, self.index, use_parallel, callback
         )
+
+    def update_database(
+        self,
+        music_dir: str,
+        callback: Callable = myprint,
+        parallel: Optional[bool] = None,
+    ) -> dict:
+        """Update database with new/deleted files (delta update).
+
+        Similar to Rockbox's Q_UPDATE:
+        - Scans for new files not in the database
+        - Marks missing files with FLAG_DELETED
+        - Preserves existing entries and statistics (playcount, rating, etc.)
+        - Faster than full rebuild
+
+        Args:
+            music_dir: Directory to scan for music files
+            callback: Progress callback function
+            parallel: Override parallel processing (default: uses self.use_parallel)
+
+        Returns:
+            Dictionary with statistics:
+                - added: Number of new files added
+                - deleted: Number of files marked as deleted
+                - unchanged: Number of existing entries preserved
+                - failed: Number of files that failed to process
+        """
+        use_parallel = parallel if parallel is not None else self.use_parallel
+
+        # Build a set of existing file paths (normalized)
+        existing_paths = set()
+        for entry in self.index.entries:
+            if not entry.is_deleted():
+                path_entry = self.tagfiles["filename"].entries[entry["filename"]]
+                # Normalize path for comparison
+                existing_paths.add(path_entry.data.lower())
+
+        # Scan for all current files in music directory
+        callback("Scanning music directory...")
+        self._scanner.add_dir(
+            music_dir,
+            recursive=True,
+            paths=self.paths,
+            failed=self.failed,
+            dircallback=lambda msg: callback(f"Scanning: {msg}"),
+        )
+
+        # Normalize new paths for comparison
+        new_paths = {p.lower() for p in self.paths}
+
+        # Determine which files to add (not in database)
+        paths_to_add = new_paths - existing_paths
+
+        # Determine which files to mark as deleted (in database but not on disk)
+        paths_to_delete = existing_paths - new_paths
+
+        stats = {
+            "added": 0,
+            "deleted": 0,
+            "unchanged": len(existing_paths & new_paths),
+            "failed": len(self.failed),
+        }
+
+        # Mark deleted files
+        if paths_to_delete:
+            callback(f"Marking {len(paths_to_delete)} deleted files...")
+            for entry in self.index.entries:
+                if not entry.is_deleted():
+                    path_entry = self.tagfiles["filename"].entries[entry["filename"]]
+                    if path_entry.data.lower() in paths_to_delete:
+                        entry.set_flag(FLAG_DELETED)
+                        stats["deleted"] += 1
+
+        # Add new files if any
+        if paths_to_add:
+            callback(f"Adding {len(paths_to_add)} new files...")
+
+            # Filter paths to only include new files
+            original_paths = self.paths.copy()
+            self.paths = {p for p in original_paths if p.lower() in paths_to_add}
+
+            # Generate database entries for new files only
+            # This preserves existing entries and their indices
+            old_count = self.index.count
+
+            # Generate new entries without clearing existing data
+            new_fields = self._generator.generate(
+                self.paths,
+                self.formats,
+                self.tagfiles,
+                self.index,
+                use_parallel,
+                callback,
+                preserve_existing=True,
+            )
+
+            # Merge multiple_fields if any
+            if hasattr(self, "multiple_fields"):
+                self.multiple_fields.update(new_fields)
+            else:
+                self.multiple_fields = new_fields
+
+            stats["added"] = self.index.count - old_count
+
+            # Restore all paths
+            self.paths = original_paths
+        else:
+            callback("No new files to add")
+
+        callback(
+            f"Update complete: {stats['added']} added, "
+            f"{stats['deleted']} deleted, {stats['unchanged']} unchanged"
+        )
+
+        return stats
 
     # ---------------------------------------------------------------------------
     # Database I/O (delegated to DatabaseIO)
