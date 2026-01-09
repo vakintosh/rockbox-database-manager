@@ -7,7 +7,7 @@ import json
 
 from unittest.mock import patch
 
-from rockbox_db_manager.constants import MAGIC
+from rockbox_db_manager.constants import MAGIC, FILE_TAG_INDICES
 from rockbox_db_manager.cli import main, __version__
 from rockbox_db_manager.cli.utils import setup_logging
 from rockbox_db_manager.cli.schemas import (
@@ -137,8 +137,9 @@ def test_validate_valid_database(tmp_path):
 
     # Create all required database files with proper structure
     # Tag files need: magic (4), datasize (4), entry_count (4) = 12 bytes minimum
-    for i in range(9):  # 9 tag files
-        tag_file = db_dir / f"database_{i}.tcd"
+    # Files: 0-8, 12 (using FILE_TAG_INDICES)
+    for file_num in FILE_TAG_INDICES:
+        tag_file = db_dir / f"database_{file_num}.tcd"
         with open(tag_file, "wb") as f:
             magic = MAGIC
             datasize = 0  # No entries, so data size is 0 (excluding header)
@@ -272,15 +273,15 @@ def test_inspect_invalid_file_number(capsys, tmp_path):
     with pytest.raises(SystemExit) as exc_info:
         with patch(
             "sys.argv",
-            ["rdbm", "inspect", "--db-dir", str(db_dir), "--file-number", "9"],
+            ["rdbm", "inspect", "--db-dir", str(db_dir), "--file-number", "10"],
         ):
             main()
 
     assert exc_info.value.code == 10  # ExitCode.INVALID_INPUT
     captured = capsys.readouterr()
     assert (
-        "must be between 0 and 8" in captured.out
-        or "must be between 0 and 8" in captured.err
+        "must be between 0 and 9" in captured.out
+        or "must be between 0 and 9" in captured.err
     )
 
 
@@ -389,17 +390,17 @@ def test_inspect_all_file_numbers(tmp_path):
     db_dir = tmp_path / "db"
     db_dir.mkdir()
 
-    # Create mock database files for all 9 tag files
-    for i in range(9):
-        tag_file = db_dir / f"database_{i}.tcd"
+    # Create mock database files for all tag files (using FILE_TAG_INDICES)
+    for file_num in FILE_TAG_INDICES:
+        tag_file = db_dir / f"database_{file_num}.tcd"
         with open(tag_file, "wb") as f:
             magic = MAGIC
             datasize = 12  # Header only
             entry_count = 0
             f.write(struct.pack("III", magic, datasize, entry_count))
 
-    # Test each file number
-    for i in range(9):
+    # Test each file number (0-9 which map to files 0-8, 12)
+    for i in range(len(FILE_TAG_INDICES)):
         with patch(
             "sys.argv",
             [
@@ -432,8 +433,8 @@ def test_validate_json_valid_database(tmp_path, capsys):
     db_dir.mkdir()
 
     # Create all required database files with proper structure
-    for i in range(9):  # 9 tag files
-        tag_file = db_dir / f"database_{i}.tcd"
+    for file_num in FILE_TAG_INDICES:
+        tag_file = db_dir / f"database_{file_num}.tcd"
         with open(tag_file, "wb") as f:
             magic = MAGIC
             datasize = 0
@@ -550,7 +551,7 @@ def test_load_json_valid_database(tmp_path, capsys):
     assert response.db_path == str(db_dir)
     assert response.entries == 0
     assert isinstance(response.tag_counts, dict)
-    assert len(response.tag_counts) == 9  # 9 tag files
+    assert len(response.tag_counts) == 10  # 10 tag files (including canonicalartist)
 
 
 def test_load_json_nonexistent_path(capsys):
@@ -753,8 +754,8 @@ def test_validate_json_quiet_mode_suppresses_output(tmp_path, capsys):
     db_dir.mkdir()
 
     # Create valid database
-    for i in range(9):
-        tag_file = db_dir / f"database_{i}.tcd"
+    for file_num in FILE_TAG_INDICES:
+        tag_file = db_dir / f"database_{file_num}.tcd"
         with open(tag_file, "wb") as f:
             magic = MAGIC
             datasize = 0
@@ -800,8 +801,8 @@ def test_json_output_structure_validate_success(tmp_path, capsys):
     db_dir.mkdir()
 
     # Create valid database
-    for i in range(9):
-        tag_file = db_dir / f"database_{i}.tcd"
+    for file_num in FILE_TAG_INDICES:
+        tag_file = db_dir / f"database_{file_num}.tcd"
         with open(tag_file, "wb") as f:
             magic = MAGIC
             datasize = 0

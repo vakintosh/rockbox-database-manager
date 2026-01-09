@@ -299,18 +299,22 @@ class Database:
         existing_paths = set()
         for entry in self.index.entries:
             if not entry.is_deleted():
-                path_entry = self.tagfiles["filename"].entries[entry["filename"]]
-                # Normalize path for comparison
-                existing_paths.add(path_entry.data.lower())
+                # entry["path"] is already a TagEntry with .data attribute
+                existing_paths.add(entry["path"].data.lower())
 
         # Scan for all current files in music directory
         callback("Scanning music directory...")
         self._scanner.add_dir(
             music_dir,
+            paths_set=self.paths,
+            failed_list=self.failed,
             recursive=True,
-            paths=self.paths,
-            failed=self.failed,
-            dircallback=lambda msg: callback(f"Scanning: {msg}"),
+            use_parallel=use_parallel,
+            # Don't show per-directory callbacks during scan - too verbose and no total count
+            dircallback=None,
+        )
+        callback(
+            f"Scan complete: found {len(self.paths)} files ({len(self.failed)} failed)"
         )
 
         # Normalize new paths for comparison
@@ -322,11 +326,17 @@ class Database:
         # Determine which files to mark as deleted (in database but not on disk)
         paths_to_delete = existing_paths - new_paths
 
+        # Count existing active and deleted entries before update
+        initial_active = sum(1 for e in self.index.entries if not e.is_deleted())
+        initial_deleted = sum(1 for e in self.index.entries if e.is_deleted())
+
         stats = {
             "added": 0,
             "deleted": 0,
             "unchanged": len(existing_paths & new_paths),
             "failed": len(self.failed),
+            "initial_active": initial_active,
+            "initial_deleted": initial_deleted,
         }
 
         # Mark deleted files
@@ -334,8 +344,8 @@ class Database:
             callback(f"Marking {len(paths_to_delete)} deleted files...")
             for entry in self.index.entries:
                 if not entry.is_deleted():
-                    path_entry = self.tagfiles["filename"].entries[entry["filename"]]
-                    if path_entry.data.lower() in paths_to_delete:
+                    # entry["path"] is already a TagEntry with .data attribute
+                    if entry["path"].data.lower() in paths_to_delete:
                         entry.set_flag(FLAG_DELETED)
                         stats["deleted"] += 1
 
@@ -375,9 +385,17 @@ class Database:
         else:
             callback("No new files to add")
 
+        # Calculate final counts
+        final_active = sum(1 for e in self.index.entries if not e.is_deleted())
+        final_deleted = sum(1 for e in self.index.entries if e.is_deleted())
+
+        stats["final_active"] = final_active
+        stats["final_deleted"] = final_deleted
+
         callback(
             f"Update complete: {stats['added']} added, "
-            f"{stats['deleted']} deleted, {stats['unchanged']} unchanged"
+            f"{stats['deleted']} deleted, {stats['unchanged']} unchanged, "
+            f"{final_active} active entries ({final_deleted} deleted)"
         )
 
         return stats

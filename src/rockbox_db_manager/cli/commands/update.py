@@ -17,7 +17,7 @@ from rich.console import Console
 from rich.table import Table
 
 from ...database import Database
-from ..callbacks import ProgressCallback, log_callback
+from ..callbacks import log_callback
 from ..utils import ExitCode, json_output
 from ..schemas import ErrorResponse, UpdateSuccessResponse
 
@@ -132,7 +132,6 @@ def cmd_update(args: argparse.Namespace) -> None:
 
     try:
         if not use_json:
-            callback = ProgressCallback()
             with Progress(
                 SpinnerColumn(),
                 TextColumn("[cyan]{task.description}"),
@@ -143,10 +142,14 @@ def cmd_update(args: argparse.Namespace) -> None:
             ) as progress:
                 task = progress.add_task("Scanning...", total=None)
 
-                def update_callback(current, total, status="Scanning..."):
-                    if total and task.total is None:
-                        progress.update(task, total=total)
-                    progress.update(task, completed=current, description=status)
+                def update_callback(msg, **kwargs):
+                    if isinstance(msg, str):
+                        progress.update(task, description=msg)
+                    elif isinstance(msg, int):
+                        if progress.tasks[task].total is None:
+                            progress.update(task, total=msg)
+                        else:
+                            progress.advance(task, 1)
 
                 stats = db.update_database(str(music_path), callback=update_callback)
         else:
@@ -214,6 +217,8 @@ def cmd_update(args: argparse.Namespace) -> None:
     deleted = stats.get("deleted", 0)
     unchanged = stats.get("unchanged", 0)
     failed = stats.get("failed", 0)
+    final_active = stats.get("final_active", 0)
+    final_deleted = stats.get("final_deleted", 0)
 
     # JSON output
     if use_json:
@@ -224,6 +229,8 @@ def cmd_update(args: argparse.Namespace) -> None:
                 output_dir=str(output_path),
                 original_entries=original_count,
                 final_entries=new_count,
+                active_entries=final_active,
+                deleted_entries=final_deleted,
                 added=added,
                 deleted=deleted,
                 unchanged=unchanged,
@@ -243,16 +250,27 @@ def cmd_update(args: argparse.Namespace) -> None:
     table.add_row("Database", str(db_path))
     table.add_row("Music Directory", str(music_path))
     table.add_row("Output", str(output_path))
-    table.add_row("Original Entries", f"{original_count:,}")
-    table.add_row("Final Entries", f"{new_count:,}")
-    table.add_row("Added", f"{added:,}")
-    table.add_row("Deleted", f"{deleted:,}")
+    table.add_row("", "")  # Separator
+    table.add_row("Original Total Entries", f"{original_count:,}")
+    table.add_row("Final Total Entries", f"{new_count:,}")
+    table.add_row("Active Entries", f"{final_active:,}", style="green")
+    table.add_row("Deleted Entries", f"{final_deleted:,}", style="yellow")
+    table.add_row("", "")  # Separator
+    table.add_row("Added", f"{added:,}", style="green")
+    table.add_row("Newly Deleted", f"{deleted:,}", style="yellow")
     table.add_row("Unchanged", f"{unchanged:,}")
     if failed > 0:
-        table.add_row("Failed", f"{failed:,}", style="yellow")
+        table.add_row("Failed", f"{failed:,}", style="red")
     table.add_row("Duration", f"{duration_ms:,} ms")
 
     console.print(table)
     console.print()
+
+    if final_deleted > 0:
+        console.print(
+            f"[yellow]Note:[/yellow] {final_deleted} deleted entries are preserved "
+            "in the database to maintain statistics (playcount, ratings, etc.)"
+        )
+        console.print()
 
     sys.exit(ExitCode.SUCCESS)

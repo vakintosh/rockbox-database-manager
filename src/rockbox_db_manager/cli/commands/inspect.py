@@ -11,7 +11,7 @@ from typing import Optional
 from rich.console import Console
 from rich.table import Table
 
-from ...constants import FILE_TAGS
+from ...constants import FILE_TAGS, FILE_TAG_INDICES
 from ...indexfile import IndexFile
 from ...tagging.tag.tagfile import TagFile
 from ..utils import ExitCode, json_output
@@ -57,19 +57,22 @@ def cmd_inspect(args: argparse.Namespace) -> None:
 
     # Determine which file to read
     if args.file_number is not None:
-        if args.file_number < 0 or args.file_number > 8:
+        if args.file_number < 0 or args.file_number >= len(FILE_TAGS):
             if use_json:
                 json_output(
                     ErrorResponse(
                         error="invalid_input",
-                        message="File number must be between 0 and 8",
+                        message=f"File number must be between 0 and {len(FILE_TAGS) - 1}",
                     ),
                     ExitCode.INVALID_INPUT,
                 )
-            console.print("[red]Error: File number must be between 0 and 8[/red]")
+            console.print(
+                f"[red]Error: File number must be between 0 and {len(FILE_TAGS) - 1}[/red]"
+            )
             sys.exit(ExitCode.INVALID_INPUT)
 
-        filename = f"database_{args.file_number}.tcd"
+        file_num = FILE_TAG_INDICES[args.file_number]
+        filename = f"database_{file_num}.tcd"
         file_type = FILE_TAGS[args.file_number]
     else:
         filename = "database_idx.tcd"
@@ -102,7 +105,8 @@ def cmd_inspect(args: argparse.Namespace) -> None:
 
             # Load all tag files for proper index entry parsing
             for i, tag_name in enumerate(FILE_TAGS):
-                tag_path = db_dir / f"database_{i}.tcd"
+                file_num = FILE_TAG_INDICES[i]
+                tag_path = db_dir / f"database_{file_num}.tcd"
                 if tag_path.exists():
                     tagfiles[tag_name] = TagFile.read(str(tag_path))
                 else:

@@ -193,10 +193,12 @@ class UpdateSuccessResponse(BaseModel):
         db_path: Path to original database
         music_dir: Path to music directory scanned
         output_dir: Path where updated database was written
-        original_entries: Number of entries before update
-        final_entries: Number of entries after update
+        original_entries: Total number of entries before update
+        final_entries: Total number of entries after update (including deleted)
+        active_entries: Number of active (non-deleted) entries
+        deleted_entries: Number of deleted entries (marked but preserved)
         added: Number of new files added
-        deleted: Number of files marked as deleted
+        deleted: Number of files newly marked as deleted
         unchanged: Number of existing entries preserved
         failed: Number of files that failed to process
         duration_ms: Update duration in milliseconds
@@ -206,10 +208,12 @@ class UpdateSuccessResponse(BaseModel):
     db_path: str = Field(description="Path to original database")
     music_dir: str = Field(description="Path to music directory")
     output_dir: str = Field(description="Path to output database")
-    original_entries: int = Field(ge=0, description="Original entry count")
-    final_entries: int = Field(ge=0, description="Final entry count")
+    original_entries: int = Field(ge=0, description="Original total entry count")
+    final_entries: int = Field(ge=0, description="Final total entry count")
+    active_entries: int = Field(ge=0, description="Active (non-deleted) entries")
+    deleted_entries: int = Field(ge=0, description="Deleted entries (preserved)")
     added: int = Field(ge=0, description="New files added")
-    deleted: int = Field(ge=0, description="Files marked as deleted")
+    deleted: int = Field(ge=0, description="Files newly marked as deleted")
     unchanged: int = Field(ge=0, description="Existing entries preserved")
     failed: int = Field(ge=0, description="Files that failed to process")
     duration_ms: int = Field(ge=0, description="Update duration (ms)")

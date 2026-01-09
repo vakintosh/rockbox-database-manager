@@ -1,20 +1,25 @@
 # Tag order matches Rockbox tagcache.h enum tag_type exactly
 # tag_artist=0, tag_album=1, tag_genre=2, tag_title=3,
 # tag_filename=4, tag_composer=5, tag_comment=6, tag_albumartist=7, tag_grouping=8,
-# tag_year=9, tag_discnumber=10, tag_tracknumber=11,
-# tag_virt_canonicalartist=12 (virtual tag stored in database)
+# tag_year=9, tag_discnumber=10, tag_tracknumber=11 are embedded in index (no separate files)
+# tag_virt_canonicalartist=12 (virtual tag stored in database_12.tcd)
 FILE_TAGS = [
-    "artist",  # 0: tag_artist
-    "album",  # 1: tag_album
-    "genre",  # 2: tag_genre
-    "title",  # 3: tag_title
-    "path",  # 4: tag_filename
-    "composer",  # 5: tag_composer
-    "comment",  # 6: tag_comment
-    "album artist",  # 7: tag_albumartist
-    "grouping",  # 8: tag_grouping
-    "canonicalartist",  # 9: tag_virt_canonicalartist (artist or albumartist if artist is empty)
+    "artist",  # 0: tag_artist -> database_0.tcd
+    "album",  # 1: tag_album -> database_1.tcd
+    "genre",  # 2: tag_genre -> database_2.tcd
+    "title",  # 3: tag_title -> database_3.tcd
+    "path",  # 4: tag_filename -> database_4.tcd
+    "composer",  # 5: tag_composer -> database_5.tcd
+    "comment",  # 6: tag_comment -> database_6.tcd
+    "album artist",  # 7: tag_albumartist -> database_7.tcd
+    "grouping",  # 8: tag_grouping -> database_8.tcd
+    "canonicalartist",  # 9 in list -> database_12.tcd (note: skips 9-11 which are in index)
 ]
+
+# Map FILE_TAGS indices to actual database file numbers
+# Files 0-8 map directly, but canonicalartist (index 9 in FILE_TAGS) maps to file 12
+# because files 9-11 (year, discnumber, tracknumber) are embedded in the index
+FILE_TAG_INDICES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 12]
 
 # Numeric tags stored in the index file (tag_seek array)
 # Continue from tag_year=10 in Rockbox
