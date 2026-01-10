@@ -183,7 +183,9 @@ class DatabaseGenerator:
         cache = TagCache.get_cache()
 
         for i, path in enumerate(sorted_paths, 1):
-            (size, mtime), tags = cache[path]
+            # Cache uses lowercase keys for case-insensitive lookups
+            lowerpath = path.lower()
+            (size, mtime), tags = cache[lowerpath]
 
             # Path translation for cross-compilation
             # When building on a laptop for an iPod, we need to translate paths
@@ -256,7 +258,9 @@ class DatabaseGenerator:
             batch_results = []
             for path in paths_batch:
                 try:
-                    (size, mtime), tags = cache[path]
+                    # Cache uses lowercase keys for case-insensitive lookups
+                    lowerpath = path.lower()
+                    (size, mtime), tags = cache[lowerpath]
                 except KeyError:
                     # File not in cache - skip it (should not happen if cache is up to date)
                     # This occurs when scanning a folder that wasn't included in the tag cache

@@ -230,9 +230,6 @@ class TestCPUEfficiency:
         # Assert memory growth is reasonable (allow 20% for variance)
         assert mem_growth_pct <= 20, f"Excessive memory growth: {mem_growth_pct:.1f}%"
 
-    @pytest.mark.skip(
-        reason="Temporarily skipped - KeyError in cache during path preservation fix"
-    )
     def test_batch_processing_throughput(self, test_music_dir):
         """Test batch processing efficiency and throughput."""
         TagCache.clear()
