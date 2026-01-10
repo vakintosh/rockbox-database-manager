@@ -21,7 +21,7 @@ from rockbox_db_manager.database import Database, TagCache
 
 def format_size(bytes_size):
     """Format bytes to human readable size."""
-    for unit in ['B', 'KB', 'MB', 'GB']:
+    for unit in ["B", "KB", "MB", "GB"]:
         if bytes_size < 1024.0:
             return f"{bytes_size:.2f} {unit}"
         bytes_size /= 1024.0
@@ -42,8 +42,12 @@ def print_memory_stats(label):
     print(f"\n{'=' * 70}")
     print(f"{label}")
     print(f"{'=' * 70}")
-    print(f"Process Memory - Current: {format_size(current)}, Peak: {format_size(peak)}")
-    print(f"TagCache       - Used: {format_size(cache_bytes)} ({cache_mb:.2f} MB), Entries: {cache_entries}")
+    print(
+        f"Process Memory - Current: {format_size(current)}, Peak: {format_size(peak)}"
+    )
+    print(
+        f"TagCache       - Used: {format_size(cache_bytes)} ({cache_mb:.2f} MB), Entries: {cache_entries}"
+    )
     print(f"{'=' * 70}")
 
 
@@ -79,13 +83,15 @@ def test_memory_leak_detection():
 
     # Analyze memory growth - allow up to 10% growth (some variance is normal)
     for i in range(1, len(memory_snapshots)):
-        prev_proc, prev_cache = memory_snapshots[i-1]
+        prev_proc, prev_cache = memory_snapshots[i - 1]
         curr_proc, curr_cache = memory_snapshots[i]
 
         proc_growth = curr_proc - prev_proc
         proc_growth_pct = (proc_growth / prev_proc * 100) if prev_proc > 0 else 0
 
-        assert proc_growth_pct <= 10, f"Memory leak detected: {proc_growth_pct:.1f}% growth"
+        assert proc_growth_pct <= 10, (
+            f"Memory leak detected: {proc_growth_pct:.1f}% growth"
+        )
 
     tracemalloc.stop()
 
@@ -152,7 +158,9 @@ def test_executor_cleanup():
     final_threads = threading.active_count()
 
     # Check if threads were cleaned up (allow some variance for daemon threads)
-    assert final_threads <= initial_threads + 2, f"{final_threads - initial_threads} extra threads remaining"
+    assert final_threads <= initial_threads + 2, (
+        f"{final_threads - initial_threads} extra threads remaining"
+    )
 
 
 def test_cache_management():
