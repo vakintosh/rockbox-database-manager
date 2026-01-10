@@ -74,6 +74,28 @@ class ThreadingSupport:
             for thread in self._active_threads.values():
                 thread.stop()
 
+    def cleanup(self, wait: bool = True, timeout: float = 2.0) -> None:
+        """Cleanup all threads and wait for them to finish.
+
+        Args:
+            wait: If True, wait for threads to complete
+            timeout: Maximum time to wait for each thread in seconds
+        """
+        self.cancel_all_threads()
+
+        if wait:
+            with self._thread_lock:
+                threads_to_join = list(self._active_threads.values())
+
+            # Join threads outside the lock to avoid deadlock
+            for thread in threads_to_join:
+                if thread.is_alive():
+                    thread.join(timeout=timeout)
+
+            # Clear the dictionary
+            with self._thread_lock:
+                self._active_threads.clear()
+
     def start_thread(
         self, func: Callable, *args: Any, thread_id: Optional[str] = None, **kwargs: Any
     ) -> str:

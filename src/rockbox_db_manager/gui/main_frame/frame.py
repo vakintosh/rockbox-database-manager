@@ -161,4 +161,14 @@ class MyFrame(wxFB_gui.Frame):
         for info in self.thread_info:
             info.timer.Stop()
 
+        # Cancel all active threads
+        self.threading_support.cancel_all_threads()
+
+        # Shutdown database executor pools to free resources
+        if hasattr(self, "database") and self.database is not None:
+            try:
+                self.database.shutdown(wait=False)
+            except Exception:
+                pass  # Ignore errors during cleanup
+
         evt.Skip()

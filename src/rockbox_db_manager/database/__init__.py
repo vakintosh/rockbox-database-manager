@@ -200,6 +200,33 @@ class Database:
         """Trim cache to prevent unbounded growth."""
         TagCache.trim()
 
+    def shutdown(self, wait: bool = True) -> None:
+        """Shutdown persistent executor pools to free resources.
+
+        Args:
+            wait: If True, wait for all pending tasks to complete
+        """
+        if hasattr(self, "_scanner"):
+            self._scanner.shutdown(wait=wait)
+        if hasattr(self, "_generator"):
+            self._generator.shutdown(wait=wait)
+
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit - shutdown executor pools."""
+        self.shutdown(wait=True)
+        return False
+
+    def __del__(self):
+        """Cleanup executor pools on object destruction."""
+        try:
+            self.shutdown(wait=False)
+        except Exception:
+            pass  # Ignore errors during cleanup
+
     # ---------------------------------------------------------------------------
     # File operations (delegated to FileScanner)
     # ---------------------------------------------------------------------------
@@ -455,6 +482,8 @@ class Database:
             self.paths = original_paths
         else:
             callback("No new files to add")
+            # Signal completion with 0 total so progress bar displays properly
+            callback(0, 0)
 
         # Calculate final counts
         final_active = sum(1 for e in self.index.entries if not e.is_deleted())
