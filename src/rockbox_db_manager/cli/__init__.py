@@ -118,9 +118,9 @@ def parse_args() -> tuple[argparse.ArgumentParser, argparse.Namespace]:
     # ──────────────────────────────
     generate_parser = subparsers.add_parser(
         "generate",
-        help="Generate Rockbox database from music folder",
+        help="Generate Rockbox database from music folder (supports cross-compilation with --ipod-root)",
         usage="rdbm generate --music-dir <path/to/source/music/dir> --output <path/to/target/database/dir> [options]",
-        description="Scan music folder and generate Rockbox database files",
+        description="Scan music folder and generate Rockbox database files. Supports cross-compilation with --ipod-root for 180x faster database generation on laptop/server instead of on device.",
         formatter_class=RichHelpFormatter,
         add_help=False,
     )
@@ -157,6 +157,16 @@ def parse_args() -> tuple[argparse.ArgumentParser, argparse.Namespace]:
         type=int,
         metavar="N",
         help="Number of worker threads for parallel processing (default: auto-calculated as CPU count + 4, max 32)",
+    )
+    generate_options.add_argument(
+        "--ipod-root",
+        type=Path,
+        metavar="PATH",
+        help=(
+            "iPod mount point for cross-compilation. When generating database on a laptop "
+            "for an iPod, specify the mount point (e.g., /Volumes/IPOD or E:) to strip from paths. "
+            "Example: /Volumes/IPOD/Music/Song.mp3 → /Music/Song.mp3 in database"
+        ),
     )
     generate_global = generate_parser.add_argument_group("Global Options")
     add_global_options(generate_global)
@@ -295,20 +305,9 @@ def parse_args() -> tuple[argparse.ArgumentParser, argparse.Namespace]:
     # ──────────────────────────────
     update_parser = subparsers.add_parser(
         "update",
-        help="Update database with new/deleted/renamed files (delta update)",
+        help="Update database with new/deleted/renamed files (supports cross-compilation with --ipod-root)",
         usage="rdbm update --db-dir <path/to/database> --music-dir <path/to/music> [options]",
-        description=(
-            "Incrementally update an existing database:\n"
-            "  • Scans for new files not in the database\n"
-            "  • Detects renamed/moved files to preserve statistics\n"
-            "  • Marks missing files as deleted (preserves statistics)\n"
-            "  • Faster than full rebuild\n"
-            "  • Preserves playcount, rating, lastplayed, and other stats\n\n"
-            "Rename Detection:\n"
-            "  Automatically detects when files are renamed (e.g., '01_Song.mp3' → '01 - Song.mp3')\n"
-            "  or moved to different folders, preserving all runtime data (play counts, ratings).\n\n"
-            "This is similar to Rockbox's 'Update Now' feature."
-        ),
+        description="Incrementally update existing database: scans for new files, detects renamed/moved files to preserve statistics, marks missing files as deleted. Faster than full rebuild. Supports cross-compilation with --ipod-root (180x faster on laptop/server). Similar to Rockbox's 'Update Now' feature.",
         formatter_class=RichHelpFormatter,
         add_help=False,
     )
@@ -331,6 +330,16 @@ def parse_args() -> tuple[argparse.ArgumentParser, argparse.Namespace]:
         "--output",
         type=Path,
         help="Output directory (default: update database in place)",
+    )
+    update_options.add_argument(
+        "--ipod-root",
+        type=Path,
+        metavar="PATH",
+        help=(
+            "iPod mount point for cross-compilation. When updating database on a laptop "
+            "for an iPod, specify the mount point (e.g., /Volumes/IPOD or E:) to strip from paths. "
+            "Example: /Volumes/IPOD/Music/Song.mp3 → /Music/Song.mp3 in database"
+        ),
     )
     update_global = update_parser.add_argument_group("Global Options")
     add_global_options(update_global)

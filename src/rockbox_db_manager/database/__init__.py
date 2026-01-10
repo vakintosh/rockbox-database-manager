@@ -54,14 +54,21 @@ class Database:
     managing Rockbox database files.
     """
 
-    def __init__(self, config: Optional[Config] = None):
+    def __init__(
+        self, config: Optional[Config] = None, ipod_root: Optional[str] = None
+    ):
         """Initialize a new Database instance.
 
         Args:
             config: Optional Config object. If None, loads default config.
+            ipod_root: Optional iPod mount point for cross-compilation.
+                      When set, paths are translated from laptop paths to iPod-relative paths.
+                      Example: ipod_root="/Volumes/IPOD" converts "/Volumes/IPOD/Music/Song.mp3"
+                      to "/Music/Song.mp3" in the database.
         """
         # Load or use provided config
         self.config = config if config is not None else Config()
+        self.ipod_root = ipod_root
 
         # Set database version from config BEFORE calling clear()
         db_version = self.config.get_database_version()
@@ -87,9 +94,11 @@ class Database:
         self.max_workers = min(32, cpu_count + 4)
         self.use_parallel = True  # Can be toggled via parameters
 
-        # Initialize scanner and generator with configured workers
+        # Initialize scanner and generator with configured workers and ipod_root
         self._scanner = FileScanner(max_workers=self.max_workers)
-        self._generator = DatabaseGenerator(max_workers=self.max_workers)
+        self._generator = DatabaseGenerator(
+            max_workers=self.max_workers, ipod_root=ipod_root
+        )
 
         # Set default formats
         for field in FORMATTED_TAGS:
@@ -480,7 +489,9 @@ class Database:
         DatabaseIO.write(self.tagfiles, self.index, out_dir, callback)
 
     @staticmethod
-    def read(in_dir: str = "", callback: Callable = myprint):
+    def read(
+        in_dir: str = "", callback: Callable = myprint, ipod_root: Optional[str] = None
+    ):
         """Read the database from a directory and return a Database object.
 
         Files that will be read:
@@ -490,11 +501,12 @@ class Database:
         Args:
             in_dir: Input directory path
             callback: Progress callback function
+            ipod_root: Optional iPod mount point for cross-compilation updates
 
         Returns:
             Database object with loaded data
         """
-        db = Database()
+        db = Database(ipod_root=ipod_root)
         db.tagfiles, db.index = DatabaseIO.read(in_dir, callback)
         return db
 

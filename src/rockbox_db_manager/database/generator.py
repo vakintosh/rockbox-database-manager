@@ -36,23 +36,52 @@ def myprint(*args, **kwargs):
 class DatabaseGenerator:
     """Handles database generation from cached tags with parallel processing."""
 
-    def __init__(self, max_workers: Optional[int] = None):
+    def __init__(
+        self, max_workers: Optional[int] = None, ipod_root: Optional[str] = None
+    ):
         """Initialize the database generator.
 
         Args:
             max_workers: Maximum number of parallel workers.
                         If None, auto-detects based on CPU count (recommended).
+            ipod_root: Optional iPod mount point for path translation.
+                      When set, strips this prefix from file paths to create iPod-relative paths.
+                      Example: ipod_root="/Volumes/IPOD" converts "/Volumes/IPOD/Music/Song.mp3"
+                      to "/Music/Song.mp3" in the database.
         """
         if max_workers is None:
             # For mixed I/O and CPU-bound operations, use moderate worker count
             # Formula: min(32, (cpu_count or 1) + 4)
             max_workers = min(32, (os.cpu_count() or 1) + 4)
         self.max_workers = max_workers
+        self.ipod_root = self._normalize_ipod_root(ipod_root)
         self._lock = Lock()
 
         # Persistent thread pool - reused across operations for better performance
         self._executor = ThreadPoolExecutor(max_workers=self.max_workers)
         self._shutdown = False
+
+    @staticmethod
+    def _normalize_ipod_root(ipod_root: Optional[str]) -> Optional[str]:
+        """Normalize the iPod root path for consistent path translation.
+
+        Args:
+            ipod_root: Raw iPod root path (e.g., "/Volumes/IPOD", "E:", "E:\\")
+
+        Returns:
+            Normalized path with trailing slash removed, or None if ipod_root is None
+        """
+        if ipod_root is None:
+            return None
+
+        # Convert to string and normalize
+        root = str(ipod_root).rstrip("/").rstrip("\\")
+
+        # Ensure it's an absolute path or drive letter
+        if not root:
+            return None
+
+        return root
 
     def generate(
         self,
@@ -156,19 +185,41 @@ class DatabaseGenerator:
         for i, path in enumerate(sorted_paths, 1):
             (size, mtime), tags = cache[path]
 
-            # Remove drive letter and convert to Unix-style path for Rockbox
-            # Use pathlib to handle path components, then convert to Unix-style
-            from pathlib import PureWindowsPath, PurePosixPath
+            # Path translation for cross-compilation
+            # When building on a laptop for an iPod, we need to translate paths
+            if self.ipod_root:
+                # Normalize path for comparison (handle backslashes)
+                normalized_path = path.replace("\\", "/")
+                normalized_root = self.ipod_root.replace("\\", "/")
 
-            path_obj = PureWindowsPath(path) if ":" in path else PurePosixPath(path)
-            # Get path without drive (anchor) and convert to POSIX
-            clean_path = str(
-                PurePosixPath(
-                    *path_obj.parts[1:] if path_obj.anchor else path_obj.parts
+                # Strip the iPod mount point prefix
+                if normalized_path.startswith(normalized_root):
+                    clean_path = normalized_path[len(normalized_root) :]
+                    # Ensure path starts with /
+                    if not clean_path.startswith("/"):
+                        clean_path = "/" + clean_path
+                else:
+                    # Path doesn't start with ipod_root - log warning and skip
+                    logging.warning(
+                        "File path '%s' does not start with ipod_root '%s'. Skipping.",
+                        path,
+                        self.ipod_root,
+                    )
+                    continue
+            else:
+                # No ipod_root specified - use original path processing
+                # Remove drive letter and convert to Unix-style path for Rockbox
+                from pathlib import PureWindowsPath, PurePosixPath
+
+                path_obj = PureWindowsPath(path) if ":" in path else PurePosixPath(path)
+                # Get path without drive (anchor) and convert to POSIX
+                clean_path = str(
+                    PurePosixPath(
+                        *path_obj.parts[1:] if path_obj.anchor else path_obj.parts
+                    )
                 )
-            )
-            if not clean_path.startswith("/"):
-                clean_path = "/" + clean_path
+                if not clean_path.startswith("/"):
+                    clean_path = "/" + clean_path
 
             if callback and i % batch_size == 0:
                 callback(i, total_paths)
@@ -213,21 +264,52 @@ class DatabaseGenerator:
                     continue
 
                 try:
-                    # Remove drive letter and convert to Unix-style path for Rockbox
-                    # Use pathlib to handle path components, then convert to Unix-style
-                    from pathlib import PureWindowsPath, PurePosixPath
+                    # Path translation for cross-compilation
+                    # When building on a laptop for an iPod, we need to translate paths:
+                    # - On laptop: /Volumes/IPOD/Music/Song.mp3
+                    # - In database: /Music/Song.mp3 (iPod-relative)
 
-                    path_obj = (
-                        PureWindowsPath(path) if ":" in path else PurePosixPath(path)
-                    )
-                    # Get path without drive (anchor) and convert to POSIX
-                    clean_path = str(
-                        PurePosixPath(
-                            *path_obj.parts[1:] if path_obj.anchor else path_obj.parts
+                    if self.ipod_root:
+                        # Normalize path for comparison (handle backslashes)
+                        normalized_path = path.replace("\\", "/")
+                        normalized_root = self.ipod_root.replace("\\", "/")
+
+                        # Strip the iPod mount point prefix
+                        if normalized_path.startswith(normalized_root):
+                            # Remove the mount point prefix
+                            clean_path = normalized_path[len(normalized_root) :]
+                            # Ensure path starts with /
+                            if not clean_path.startswith("/"):
+                                clean_path = "/" + clean_path
+                        else:
+                            # Path doesn't start with ipod_root - log warning and skip
+                            logging.warning(
+                                "File path '%s' does not start with ipod_root '%s'. Skipping.",
+                                path,
+                                self.ipod_root,
+                            )
+                            continue
+                    else:
+                        # No ipod_root specified - use original path processing
+                        # Remove drive letter and convert to Unix-style path for Rockbox
+                        # Use pathlib to handle path components, then convert to Unix-style
+                        from pathlib import PureWindowsPath, PurePosixPath
+
+                        path_obj = (
+                            PureWindowsPath(path)
+                            if ":" in path
+                            else PurePosixPath(path)
                         )
-                    )
-                    if not clean_path.startswith("/"):
-                        clean_path = "/" + clean_path
+                        # Get path without drive (anchor) and convert to POSIX
+                        clean_path = str(
+                            PurePosixPath(
+                                *path_obj.parts[1:]
+                                if path_obj.anchor
+                                else path_obj.parts
+                            )
+                        )
+                        if not clean_path.startswith("/"):
+                            clean_path = "/" + clean_path
 
                     # Create entry data
                     entry_data = {"path": clean_path, "mtime": mtime, "tags": tags}

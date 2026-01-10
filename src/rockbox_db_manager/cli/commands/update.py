@@ -115,6 +115,29 @@ def cmd_update(args: argparse.Namespace) -> None:
 
     start_time = time.time()
 
+    # Extract iPod root for cross-compilation (if provided)
+    ipod_root = None
+    if hasattr(args, "ipod_root") and args.ipod_root:
+        ipod_root = str(args.ipod_root.resolve())
+        logging.info("Using iPod root for path translation: %s", ipod_root)
+
+        # Validate that music_path is under ipod_root
+        if not str(music_path).startswith(ipod_root):
+            if use_json:
+                json_output(
+                    ErrorResponse(
+                        error="invalid_input",
+                        message=f"Music directory ({music_path}) must be under iPod root ({ipod_root})",
+                    ),
+                    ExitCode.INVALID_INPUT,
+                )
+            logging.error(
+                "Music directory (%s) must be under iPod root (%s)",
+                music_path,
+                ipod_root,
+            )
+            sys.exit(ExitCode.INVALID_INPUT)
+
     # Load existing database
     console.print(f"\n[cyan]Loading existing database from:[/cyan] {db_path}")
     try:
@@ -123,7 +146,7 @@ def cmd_update(args: argparse.Namespace) -> None:
             if logging.getLogger().level <= logging.INFO
             else lambda msg, **kwargs: None
         )
-        db = Database.read(str(db_path), callback=callback)
+        db = Database.read(str(db_path), callback=callback, ipod_root=ipod_root)
     except Exception as e:
         if use_json:
             json_output(

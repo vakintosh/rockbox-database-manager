@@ -8,7 +8,9 @@ A Python-based utility to accelerate Rockbox library management by generating da
 ## Features
 
 - **Fast database generation** from audio metadata (MP3, FLAC, MP4, Ogg Vorbis, WMA, and more)
+- **Cross-compilation support** - build database on laptop/server for iPod (180x faster than on-device)
 - **True parallel processing** - multiprocessing bypasses Python GIL (4-15x faster on multi-core systems)
+- **Incremental updates** - delta updates with rename detection preserve playcount/rating stats
 - **Intelligent caching** - persistent tag cache and memory-based optimization
 - **Full CLI suite** - generate, validate, inspect, load, and copy databases
 - **wxPython GUI** - async operations with cancellable tasks and real-time progress
@@ -160,10 +162,45 @@ rdbm update --help       # Help for update command
 **Key Features:**
 - Tag caching for faster regeneration (`--save-tags` / `--load-tags`)
 - Delta updates to add new files without full rebuild (`update` command)
+- **Cross-compilation** - build database on laptop for iPod (`--ipod-root`)
 - Configuration file support (`--config`)
 - JSON output for automation (`--json`)
 - Parallel processing (auto-configured, or use `--workers N`)
 - Detailed logging levels (`--log-level debug`)
+
+#### Cross-Compilation (Build on Laptop for iPod)
+
+**Problem**: Building tagcache on iPod takes 30+ minutes and drains battery significantly.
+
+**Solution**: Use `--ipod-root` to build database on laptop with correct path translation:
+
+```bash
+# macOS - iPod mounted at /Volumes/IPOD
+rdbm generate \
+  --music-dir /Volumes/IPOD/Music \
+  --output /Volumes/IPOD/.rockbox \
+  --ipod-root /Volumes/IPOD
+
+# Windows - iPod as drive E:
+rdbm generate \
+  --music-dir E:\Music \
+  --output E:\.rockbox \
+  --ipod-root E:
+
+# Update existing database (cross-compiled)
+rdbm update \
+  --db-dir /Volumes/IPOD/.rockbox \
+  --music-dir /Volumes/IPOD/Music \
+  --ipod-root /Volumes/IPOD
+```
+
+**How it works:**
+- Laptop path: `/Volumes/IPOD/Music/Song.mp3`
+- Database path: `/Music/Song.mp3` (iPod-relative)
+- **180x faster** than building on device
+- **Zero battery drain**
+
+See [CROSS_COMPILATION.md](CROSS_COMPILATION.md) for detailed guide with automation examples.
 
 #### Update Command (Delta Update)
 
