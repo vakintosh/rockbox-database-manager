@@ -7,7 +7,7 @@ TagCache Database (.tcd) format.
 from pathlib import Path
 from typing import Callable
 
-from ..constants import FILE_TAGS
+from ..constants import FILE_TAGS, FILE_TAG_INDICES
 from ..tagging.tag.tagfile import TagFile
 from ..indexfile import IndexFile
 import sys
@@ -44,6 +44,7 @@ class DatabaseIO:
             database_6.tcd  (comment)
             database_7.tcd  (album artist)
             database_8.tcd  (grouping)
+            database_12.tcd (canonicalartist)
             database_idx.tcd (index)
 
         Args:
@@ -53,9 +54,11 @@ class DatabaseIO:
             callback: Progress callback function
         """
         # Write the tag files with optimized buffering
+        # Note: Use FILE_TAG_INDICES to get correct file numbers (0-8, then 12)
         out_path = Path(out_dir) if out_dir else Path.cwd()
         for i, field in enumerate(FILE_TAGS):
-            filename = out_path / f"database_{i}.tcd"
+            file_num = FILE_TAG_INDICES[i]
+            filename = out_path / f"database_{file_num}.tcd"
             callback(f"Writing {filename} . . .", end="")
             tagfiles[field].write(str(filename), buffer_size=cls.BUFFER_SIZE)
             callback("done")
@@ -80,6 +83,7 @@ class DatabaseIO:
             database_6.tcd  (comment)
             database_7.tcd  (album artist)
             database_8.tcd  (grouping)
+            database_12.tcd (canonicalartist)
             database_idx.tcd (index)
 
         Args:
@@ -92,9 +96,10 @@ class DatabaseIO:
         tagfiles = {}
         in_path = Path(in_dir) if in_dir else Path.cwd()
 
-        # Read the tag files
+        # Read the tag files using FILE_TAG_INDICES for correct file numbers
         for i, field in enumerate(FILE_TAGS):
-            filename = in_path / f"database_{i}.tcd"
+            file_num = FILE_TAG_INDICES[i]
+            filename = in_path / f"database_{file_num}.tcd"
             callback(f"Reading {filename} . . .", end="")
             tagfiles[field] = TagFile.read(str(filename))
             callback("done")

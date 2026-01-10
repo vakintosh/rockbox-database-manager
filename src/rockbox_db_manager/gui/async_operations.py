@@ -85,9 +85,21 @@ class AsyncIOSupport:
 
     def shutdown(self) -> None:
         """Shutdown the async support and cleanup resources."""
-        if self._loop:
+        # Cancel all pending operations
+        for operation in list(self._operations.values()):
+            operation.cancel()
+        self._operations.clear()
+
+        # Shutdown executor
+        if self._executor:
+            self._executor.shutdown(wait=False)
+
+        # Stop event loop
+        if self._loop and not self._loop.is_closed():
             self._loop.call_soon_threadsafe(self._loop.stop)
-        self._executor.shutdown(wait=False)
+            # Give loop time to stop gracefully
+            if self._loop_thread and self._loop_thread.is_alive():
+                self._loop_thread.join(timeout=1.0)
 
     async def run_in_executor(self, func: Callable, *args: Any, **kwargs: Any) -> Any:
         """Run a blocking function in the thread pool executor.

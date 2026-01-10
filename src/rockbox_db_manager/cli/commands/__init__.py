@@ -6,6 +6,7 @@ Each module in this package implements a specific rdbm subcommand:
     validate.py: Validate database integrity
     write.py: Write database files to disk
     inspect.py: Inspect individual database files
+    update.py: Update database with new/deleted files (delta update)
 """
 
 from .generate import cmd_generate
@@ -13,6 +14,7 @@ from .load import cmd_load
 from .validate import cmd_validate
 from .write import cmd_write
 from .inspect import cmd_inspect
+from .update import cmd_update
 
 __all__ = [
     "cmd_generate",
@@ -20,4 +22,5 @@ __all__ = [
     "cmd_validate",
     "cmd_write",
     "cmd_inspect",
+    "cmd_update",
 ]

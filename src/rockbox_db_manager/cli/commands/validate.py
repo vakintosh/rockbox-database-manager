@@ -11,7 +11,7 @@ from rich.console import Console
 from rich.table import Table
 
 from ...database import Database
-from ...constants import FILE_TAGS
+from ...constants import FILE_TAGS, FILE_TAG_INDICES
 from ..utils import ExitCode, json_output
 from ..schemas import ErrorResponse, ValidationFailedResponse, ValidationSuccessResponse
 
@@ -75,7 +75,9 @@ def cmd_validate(args: argparse.Namespace) -> None:
     ) as progress:
         check_task = progress.add_task("Checking database files...", total=None)
 
-        required_files = [f"database_{i}.tcd" for i in range(len(FILE_TAGS))]
+        required_files = [
+            f"database_{FILE_TAG_INDICES[i]}.tcd" for i in range(len(FILE_TAGS))
+        ]
         required_files.append("database_idx.tcd")
 
         missing_files = []

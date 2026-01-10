@@ -20,6 +20,7 @@ coverage.xml
 .rockbox
 music_test_folder
 Docker
-
+rockbox_backup_20260109
+rockbox_source
 # Virtual environments
 .venv

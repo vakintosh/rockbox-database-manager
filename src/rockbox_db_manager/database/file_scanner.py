@@ -183,7 +183,12 @@ class FileScanner:
             TagCache.move_to_end(lowerpath)
         except (KeyError, TypeError):
             if tags is None:
-                tags = tagging.read(path)
+                try:
+                    tags = tagging.read(path)
+                except Exception as e:
+                    # Catch any tag reading errors (corrupted files, unsupported formats, etc.)
+                    logging.debug("Failed to read tags from %s: %s", path, e)
+                    tags = None
             if tags is None:
                 failed_list.append(path)
                 return

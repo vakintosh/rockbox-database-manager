@@ -76,8 +76,31 @@ def cmd_generate(args: argparse.Namespace) -> None:
 
     logging.info("Generating database from: %s", music_path)
 
+    # Extract iPod root for cross-compilation (if provided)
+    ipod_root = None
+    if hasattr(args, "ipod_root") and args.ipod_root:
+        ipod_root = str(args.ipod_root.resolve())
+        logging.info("Using iPod root for path translation: %s", ipod_root)
+
+        # Validate that music_path is under ipod_root
+        if not str(music_path).startswith(ipod_root):
+            if use_json:
+                json_output(
+                    ErrorResponse(
+                        error="invalid_input",
+                        message=f"Music directory ({music_path}) must be under iPod root ({ipod_root})",
+                    ),
+                    ExitCode.INVALID_INPUT,
+                )
+            logging.error(
+                "Music directory (%s) must be under iPod root (%s)",
+                music_path,
+                ipod_root,
+            )
+            sys.exit(ExitCode.INVALID_INPUT)
+
     # Create database instance
-    db = Database()
+    db = Database(ipod_root=ipod_root)
 
     # Suppress console output if JSON mode
     console = Console(quiet=use_json)

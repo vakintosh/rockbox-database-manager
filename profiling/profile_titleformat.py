@@ -52,8 +52,8 @@ def profile_titleformat(format_string: str, iterations: int = 1000):
     # Profile parsing and evaluation
     profiler.enable()
     try:
-        # Parse the format string
-        parsed = statement.parse(format_string)
+        # Parse the format string (returns tuple)
+        parsed, _ = statement.parse(format_string)
 
         # Evaluate multiple times to get meaningful data
         for _ in range(iterations):
