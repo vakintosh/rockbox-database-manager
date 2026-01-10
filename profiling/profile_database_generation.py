@@ -32,7 +32,8 @@ def profile_database_generation(music_dir: str):
     profiler.enable()
     try:
         db = Database()
-        db.scan(music_dir)
+        db.add_dir(music_dir, recursive=True)
+        db.generate_database()
     finally:
         profiler.disable()
 
