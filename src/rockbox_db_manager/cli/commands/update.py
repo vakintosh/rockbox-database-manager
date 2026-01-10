@@ -27,9 +27,20 @@ def cmd_update(args: argparse.Namespace) -> None:
 
     This command performs an incremental update that:
     - Scans for new files not in the database
+    - Detects renamed/moved files to preserve statistics
     - Marks missing files as deleted (preserves statistics)
     - Is faster than full rebuild
     - Preserves playcount, rating, lastplayed, and other stats
+
+    Rename Detection:
+        When files or folders are renamed, the update process automatically detects
+        these changes using multiple strategies:
+        - Path similarity matching (e.g., "01_Song.mp3" → "01 - Song.mp3")
+        - Metadata matching (modification time + audio duration)
+        - File content verification
+
+        This prevents loss of runtime data (play counts, ratings) that would
+        otherwise occur if the file were treated as deleted + newly added.
 
     Args:
         args: Parsed command-line arguments
@@ -142,13 +153,20 @@ def cmd_update(args: argparse.Namespace) -> None:
             ) as progress:
                 task = progress.add_task("Scanning...", total=None)
 
-                def update_callback(msg, **kwargs):
+                def update_callback(msg, total=None, **kwargs):
+                    # Handle both single-arg (string/int) and two-arg (current, total) signatures
                     if isinstance(msg, str):
+                        # String message - update description
                         progress.update(task, description=msg)
                     elif isinstance(msg, int):
-                        if progress.tasks[task].total is None:
+                        if total is not None:
+                            # Two-arg signature: (current, total) from generator
+                            progress.update(task, completed=msg, total=total)
+                        elif progress.tasks[task].total is None:
+                            # Single int - set total
                             progress.update(task, total=msg)
                         else:
+                            # Single int with total already set - advance
                             progress.advance(task, 1)
 
                 stats = db.update_database(str(music_path), callback=update_callback)
@@ -214,6 +232,7 @@ def cmd_update(args: argparse.Namespace) -> None:
 
     # Prepare summary
     added = stats.get("added", 0)
+    renamed = stats.get("renamed", 0)
     deleted = stats.get("deleted", 0)
     unchanged = stats.get("unchanged", 0)
     failed = stats.get("failed", 0)
@@ -232,6 +251,7 @@ def cmd_update(args: argparse.Namespace) -> None:
                 active_entries=final_active,
                 deleted_entries=final_deleted,
                 added=added,
+                renamed=renamed,
                 deleted=deleted,
                 unchanged=unchanged,
                 failed=failed,
@@ -257,6 +277,8 @@ def cmd_update(args: argparse.Namespace) -> None:
     table.add_row("Deleted Entries", f"{final_deleted:,}", style="yellow")
     table.add_row("", "")  # Separator
     table.add_row("Added", f"{added:,}", style="green")
+    if renamed > 0:
+        table.add_row("Renamed/Moved", f"{renamed:,}", style="cyan")
     table.add_row("Newly Deleted", f"{deleted:,}", style="yellow")
     table.add_row("Unchanged", f"{unchanged:,}")
     if failed > 0:
@@ -265,6 +287,13 @@ def cmd_update(args: argparse.Namespace) -> None:
 
     console.print(table)
     console.print()
+
+    if renamed > 0:
+        console.print(
+            f"[cyan]✓[/cyan] {renamed} file(s) were renamed/moved. "
+            "Statistics (playcount, ratings, etc.) have been preserved."
+        )
+        console.print()
 
     if final_deleted > 0:
         console.print(

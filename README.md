@@ -170,7 +170,7 @@ rdbm update --help       # Help for update command
 The `update` command performs incremental database updates similar to Rockbox's "Update Now" feature:
 
 ```bash
-# Update existing database with new/deleted files
+# Update existing database with new/deleted/renamed files
 rdbm update --db-dir /path/to/database --music-dir /path/to/music
 
 # Update and write to different location
@@ -180,8 +180,17 @@ rdbm update --db-dir /path/to/database --music-dir /path/to/music --output /path
 **Benefits of Delta Update:**
 - ✓ Faster than full rebuild (only processes new files)
 - ✓ Preserves playcount, rating, lastplayed statistics
+- ✓ **Detects renamed/moved files** to maintain statistics
 - ✓ Marks missing files as deleted (doesn't remove them)
 - ✓ Perfect for adding new albums to existing database
+
+**Rename Detection:**
+The update command automatically detects when files or folders are renamed:
+- Simple renames: `01_Song.mp3` → `01 - Song.mp3`
+- Folder moves: `Artist/Album/Song.mp3` → `Music/Artist - Album/Song.mp3`
+- Preserves all runtime data (play counts, ratings, last played, etc.)
+
+This prevents the loss of statistics that would occur if renamed files were treated as deletions + additions.
 
 ### GUI Application
 

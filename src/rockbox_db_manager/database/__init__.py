@@ -277,6 +277,7 @@ class Database:
 
         Similar to Rockbox's Q_UPDATE:
         - Scans for new files not in the database
+        - Detects renamed/moved files to preserve statistics
         - Marks missing files with FLAG_DELETED
         - Preserves existing entries and statistics (playcount, rating, etc.)
         - Faster than full rebuild
@@ -289,6 +290,7 @@ class Database:
         Returns:
             Dictionary with statistics:
                 - added: Number of new files added
+                - renamed: Number of files renamed/moved (statistics preserved)
                 - deleted: Number of files marked as deleted
                 - unchanged: Number of existing entries preserved
                 - failed: Number of files that failed to process
@@ -332,6 +334,7 @@ class Database:
 
         stats = {
             "added": 0,
+            "renamed": 0,
             "deleted": 0,
             "unchanged": len(existing_paths & new_paths),
             "failed": len(self.failed),
@@ -339,7 +342,66 @@ class Database:
             "initial_deleted": initial_deleted,
         }
 
-        # Mark deleted files
+        # Detect renamed/moved files BEFORE marking deletions and adding new files
+        # This preserves runtime data (playcount, ratings, etc.) for renamed files
+        renames = {}
+        if paths_to_delete and paths_to_add:
+            callback("Detecting renamed/moved files...")
+            from .rename_detector import detect_renames, apply_renames
+            import os
+
+            # Collect entries that appear to be deleted
+            potentially_deleted_entries = [
+                entry
+                for entry in self.index.entries
+                if not entry.is_deleted()
+                and entry["path"].data.lower() in paths_to_delete
+            ]
+
+            # Build file info for new paths (size, mtime)
+            new_file_info = {}
+            for path in self.paths:
+                path_lower = path.lower()
+                if path_lower in paths_to_add:
+                    try:
+                        stat_result = os.stat(path)
+                        new_file_info[path] = (
+                            stat_result.st_size,
+                            stat_result.st_mtime,
+                        )
+                    except (OSError, IOError):
+                        # Skip files we can't stat
+                        pass
+
+            # Detect renames
+            renames = detect_renames(
+                potentially_deleted_entries,
+                new_file_info,
+                similarity_threshold=0.75,
+            )
+
+            if renames:
+                callback(f"Found {len(renames)} potential renames, applying...")
+                renamed_count = apply_renames(
+                    self.index.entries, self.tagfiles, renames
+                )
+                stats["renamed"] = renamed_count
+
+                # Update paths_to_delete and paths_to_add to exclude renamed files
+                renamed_old_paths = set(renames.keys())
+                renamed_new_paths = {
+                    new_path.lower() for new_path, _ in renames.values()
+                }
+
+                paths_to_delete = paths_to_delete - renamed_old_paths
+                paths_to_add = paths_to_add - renamed_new_paths
+
+                callback(
+                    f"Applied {renamed_count} renames (preserved statistics). "
+                    f"Remaining: {len(paths_to_delete)} to delete, {len(paths_to_add)} to add"
+                )
+
+        # Mark deleted files (excluding renamed files)
         if paths_to_delete:
             callback(f"Marking {len(paths_to_delete)} deleted files...")
             for entry in self.index.entries:
@@ -349,7 +411,7 @@ class Database:
                         entry.set_flag(FLAG_DELETED)
                         stats["deleted"] += 1
 
-        # Add new files if any
+        # Add new files if any (excluding renamed files)
         if paths_to_add:
             callback(f"Adding {len(paths_to_add)} new files...")
 
@@ -393,7 +455,7 @@ class Database:
         stats["final_deleted"] = final_deleted
 
         callback(
-            f"Update complete: {stats['added']} added, "
+            f"Update complete: {stats['added']} added, {stats['renamed']} renamed, "
             f"{stats['deleted']} deleted, {stats['unchanged']} unchanged, "
             f"{final_active} active entries ({final_deleted} deleted)"
         )

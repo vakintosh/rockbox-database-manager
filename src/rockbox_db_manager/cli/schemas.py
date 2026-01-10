@@ -198,6 +198,7 @@ class UpdateSuccessResponse(BaseModel):
         active_entries: Number of active (non-deleted) entries
         deleted_entries: Number of deleted entries (marked but preserved)
         added: Number of new files added
+        renamed: Number of files renamed/moved (statistics preserved)
         deleted: Number of files newly marked as deleted
         unchanged: Number of existing entries preserved
         failed: Number of files that failed to process
@@ -213,6 +214,7 @@ class UpdateSuccessResponse(BaseModel):
     active_entries: int = Field(ge=0, description="Active (non-deleted) entries")
     deleted_entries: int = Field(ge=0, description="Deleted entries (preserved)")
     added: int = Field(ge=0, description="New files added")
+    renamed: int = Field(ge=0, description="Files renamed/moved (statistics preserved)")
     deleted: int = Field(ge=0, description="Files newly marked as deleted")
     unchanged: int = Field(ge=0, description="Existing entries preserved")
     failed: int = Field(ge=0, description="Files that failed to process")

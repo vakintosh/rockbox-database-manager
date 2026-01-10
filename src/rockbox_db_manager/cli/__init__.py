@@ -295,14 +295,18 @@ def parse_args() -> tuple[argparse.ArgumentParser, argparse.Namespace]:
     # ──────────────────────────────
     update_parser = subparsers.add_parser(
         "update",
-        help="Update database with new/deleted files (delta update)",
+        help="Update database with new/deleted/renamed files (delta update)",
         usage="rdbm update --db-dir <path/to/database> --music-dir <path/to/music> [options]",
         description=(
             "Incrementally update an existing database:\n"
             "  • Scans for new files not in the database\n"
+            "  • Detects renamed/moved files to preserve statistics\n"
             "  • Marks missing files as deleted (preserves statistics)\n"
             "  • Faster than full rebuild\n"
             "  • Preserves playcount, rating, lastplayed, and other stats\n\n"
+            "Rename Detection:\n"
+            "  Automatically detects when files are renamed (e.g., '01_Song.mp3' → '01 - Song.mp3')\n"
+            "  or moved to different folders, preserving all runtime data (play counts, ratings).\n\n"
             "This is similar to Rockbox's 'Update Now' feature."
         ),
         formatter_class=RichHelpFormatter,
